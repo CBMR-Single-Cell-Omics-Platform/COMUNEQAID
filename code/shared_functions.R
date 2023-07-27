@@ -6,6 +6,12 @@
 out_put.cex <- 1.5
 par(cex = out_put.cex)
 
+merge_tables <- function(..., snakemake_obj) {
+  tables <- snakemake_obj[unlist(list(...))]
+  tables <- lapply(tables, as.data.frame)
+  Reduce(merge, tables)
+}
+
 load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, output_list = F) {
   # read in metadata
   meta_info = rjson::fromJSON(file = file.path(frydir, 'meta_info.json'))

@@ -1,0 +1,9 @@
+[Header]
+EMFileVersion,4
+
+[Reads]
+28
+90
+
+[Data]
+Lane,Sample_ID,Sample_Name,index,index2,Sample_Project,Original_Sample_ID

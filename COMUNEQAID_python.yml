@@ -1,0 +1,10 @@
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+  - anaconda
+dependencies:
+  - salmon>=1.9.0
+  - alevin-fry>=0.8.0
+  - pandas
+

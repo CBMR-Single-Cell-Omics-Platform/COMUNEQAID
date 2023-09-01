@@ -1,38 +1,35 @@
 # Imports
 import os
 import glob
-import logging
+#import logging
+from datetime import (
+  date,
+  datetime
+  )
 import pandas as pd
 from shared import merge_tables
 
 def main():
+  
+    current_time = datetime.now()
+    date_and_time = current_time.strftime('%Y-%m-%d_%H-%M-%S')
+    date_and_time_pretty = current_time.strftime('%Y-%m-%d %H:%M:%S')
     # Init
-    logging.basicConfig(level=logging.INFO,
-                    filename=snakemake.log[0],
-                    format='%(message)s')
-                    
-    logging.getLogger().addHandler(logging.StreamHandler())
-    logging.info('#'*80)
-    logging.info('#####                                                                      #####')
-    logging.info('#####                      Mapping and quantification                      #####')
-    logging.info('#####                                                      *** / *****     #####')
-    logging.info('#'*80)
-    logging.info('#####\n##')
-    logging.info('##\tMapping and quantifying 10x libraries:')
+    fastq_path = os.path.join(
+      snakemake.config['project_path'],
+      snakemake.config['scop_id'],
+      snakemake.config['fastq_path'])
     
-    fastq_path = os.path.join(snakemake.config['project_path'],
-                              snakemake.config['scop_id'],
-                              snakemake.config['fastq_path'])
-    
-    quant_path = os.path.join(snakemake.config['project_path'],
-                            snakemake.config['scop_id'],
-                            snakemake.config['out_path'],
-                            snakemake.config['com_id']
-                            )
+    quant_path = os.path.join(
+      snakemake.config['project_path'],
+      snakemake.config['scop_id'],
+      snakemake.config['out_path'],
+      snakemake.config['com_id'],
+      'salmon-alevin_v1.9.0_alevin-fry_v0.8.0')
     
     sample_data = merge_tables(
         'sample_sheet', 'sample2reaction', 
-        'reaction_sheet', snake_obj = snakemake.config
+        'reaction_sheet', 'reaction2library', snake_obj = snakemake.config
         )
     
     reaction_data = merge_tables(
@@ -40,37 +37,47 @@ def main():
         'library_sheet',  'library2sequencing', 
         'sequencing_sheet', snake_obj = snakemake.config
         )
-        
-    # Prepare output directories
-    for reaction in set(reaction_data['reaction_id']):
-        reaction_path = os.path.join(quant_path, reaction)
-        os.makedirs(reaction_path, exist_ok=True)
     
+    ## Prepare output directories
+    for reaction in set(reaction_data['reaction_id']):
+        reaction_data_sub = reaction_data.loc[reaction_data['reaction_id'] == reaction]
+      
+        for library in reaction_data_sub['library_id']:
+            library_path = os.path.join(quant_path, reaction, library)
+            os.makedirs(library_path, exist_ok=True)
         
     # Align
-    for idx, reaction in reaction_data.groupby(['reaction_id', 'library_type']):
-        logging.info(f'##\t-\tproccessing {idx[1]} for reaction:\t{idx[0]}')
+    for idx, reaction in reaction_data.groupby(['library_id']):
         
         out_folder = os.path.join(
-            quant_path, idx[0], idx[1]
-            )
+          quant_path,
+          reaction['reaction_id'].values[0],
+          idx[0])
+          
         os.makedirs(out_folder, exist_ok=True)
         
         meta_info_file = os.path.join(
-            out_folder, 'res', 'meta_info.json'
+            out_folder, 'res', 'quant.json'
             )
-        
+            
         if os.path.isfile(meta_info_file):
-            print('##\t-\tpipestance exists - skipping')
+            message = '################################################################################\n'
+            message += f'Matrix already exists - skipping library: {reaction}\n'
+            message += f'################################################################################\n'
+            
+            with open(os.path.realpath(os.path.join(quant_path,f'_skipped_pipestance_{date_and_time}.log')), 'a') as log:
+                log.writelines(message)
+                print(message)
+            
             continue
-        
+          
         files_read_1 = list()
         files_read_2 = list()
         
         def helper(x, row):
             lane_string = '' if row['lane'] == '*' else f'_L00{row["lane"]}'
             file = row['index'] + '_S*' + lane_string + x
-            return os.path.join(fastq_path, row['bcl_folder'], file)
+            return os.path.join(fastq_path, row['bcl_folder'], 'BCL-convert_v4.0.3', file)
         
         for _, row in reaction.iterrows():
             files_read_1 += glob.glob(helper('_R1_*.fastq.gz', row))
@@ -84,7 +91,7 @@ def main():
             t3g = snakemake.config['T3G'][align]
             t2g = snakemake.config['T2G'][align]
         elif library_type == 'hto':
-            samples = sample_data.loc[sample_data['reaction_id'] == idx[0]]
+            samples = sample_data.loc[sample_data['library_id'] == idx[0]]
             hash_codes = pd.merge(samples, hto_sequences, 
                                  left_on='hto', right_on='Barcode')
             hash_codes = hash_codes[['sample_id', 'Sequence']]
@@ -93,16 +100,16 @@ def main():
         else:
             raise Exception(f"Library type {library_type} not supported")
         
-        process_index(  
-            files_read_1 = files_read_1, 
-            files_read_2 = files_read_2, 
+        process_index(
+            files_read_1 = files_read_1,
+            files_read_2 = files_read_2,
             library_type = library_type,
             index_path = index_path,
             t2g = t2g,
             alevin_fry_tgmap = t3g,
             path_quant_out = out_folder,
             meta_info_file = meta_info_file)
-        
+
     os.system(f'mkdir -p $(dirname {snakemake.output}) && touch {snakemake.output}')
     
 
@@ -126,20 +133,6 @@ def process_index(files_read_1, files_read_2, library_type, index_path,
     salmon_alevin(files_read_1, files_read_2, index_path, 
                   salmon_alevin_param, path_quant_out)
     alevin_fry(path_quant_out, direction, alevin_fry_tgmap)
-    
-    alevin_res = os.path.join(path_quant_out, 'res', 'alevin')
-    count_genes = count_lines(os.path.join(alevin_res, 'quants_mat_cols.txt'))
-    count_cells = count_lines(os.path.join(alevin_res, 'quants_mat_rows.txt'))
-
-    with open(meta_info_file, 'w') as f:
-            f.write('{')
-            f.write('  "alt_resolved_cell_numbers": [],')
-            f.write('  "dump_eq": false,')
-            f.write(f'  "num_genes": {count_genes},')
-            f.write(f'  "num_quantified_cells": {count_cells},')
-            f.write('  "resolution_strategy": "CellRangerLike",')
-            f.write(f'  "usa_mode": {usa_mode}')
-            f.write('}')
 
 
 def prepare_hto_index(hash_codes, path_quant_out):
@@ -158,7 +151,7 @@ def prepare_hto_index(hash_codes, path_quant_out):
             feature_id = line.split('\t')[0]
             print(feature_id + '\t' + feature_id, file=out_file)
 
-    logging.info('##\tbuilding HTO index')
+    
     index_path = os.path.join(path_quant_out, 'hto_index')
     os.system(
         'salmon index '
@@ -174,7 +167,7 @@ def salmon_alevin(files_read_1, files_read_2, index_path,
                   salmon_alevin_param, path_quant_out):
     read_1_string = ' '.join(files_read_1)
     read_2_string = ' '.join(files_read_2)
-    logging.info(f'##\tmapping with alevin')
+    
     os.system(f'salmon alevin \
         -l ISR \
         -i {index_path} \
@@ -187,8 +180,9 @@ def salmon_alevin(files_read_1, files_read_2, index_path,
         2>&1 | tee {path_quant_out}/alevin-fry.log -a')
 
 def alevin_fry(path_quant_out, direction, tgmap):
-    logging.info(f'##\tgenerating permit list')
+    
     whitelist = snakemake.config['whitelist']
+    
     os.system(f'alevin-fry generate-permit-list \
         -d {direction} \
         -i {path_quant_out}/map \
@@ -196,13 +190,12 @@ def alevin_fry(path_quant_out, direction, tgmap):
         -u {whitelist} \
         2>&1 | tee {path_quant_out}/alevin-fry.log -a')
     
-    logging.info(f'##\tcollating')
     os.system(f'alevin-fry collate \
         -r {path_quant_out}/map \
         -i {path_quant_out}/quant \
-        -t 1 \
+        -t {snakemake.threads} \
         2>&1 | tee {path_quant_out}/alevin-fry.log -a')
-    logging.info(f'##\tquantifying')
+    
     os.system(f'alevin-fry quant \
         --threads {snakemake.threads} \
         --input-dir {path_quant_out}/quant \
@@ -211,13 +204,6 @@ def alevin_fry(path_quant_out, direction, tgmap):
         --use-mtx \
         --tg-map {tgmap} \
         2>&1 | tee {path_quant_out}/alevin-fry.log -a')
-
-def count_lines(file):
-    i = -1
-    with open(file) as f:
-            for i, _ in enumerate(f):
-                pass
-    return i + 1
 
 hto_sequences = pd.read_csv('data/totalseq-a-hashtags.csv',
                             delimiter='\t',

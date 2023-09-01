@@ -1,68 +1,68 @@
 rule all:
     input:
-        'success/aggregate_complete.txt'
+        'success/make-aggregated-object_complete.txt'
 
-rule fastqs:
+rule makeFASTQ:
     input:
         'Snakefile'
     output:
-        temp('success/make-fastqs_complete.txt')
+        temp('success/make-FASTQ_complete.txt')
     conda:
         'COMUNEQAID_python.yml'
-    log:
-        config['project_path'] + '/' + config['scop_id'] + '/' + config['log_path'] + '/' + config['com_id'] + '/01_make-fastqs.log'
     threads:
         128
     script:
-        'code/01_make-fastqs.py'
+        'code/01_make-FASTQ.py'
 
-rule quant:
+rule mapquant:
     input:
-        rules.fastqs.output
+        rules.makeFASTQ.output
     output:
         temp('success/map-quant_complete.txt')
     conda:
         'COMUNEQAID_python.yml'
-    log:
-        config['project_path'] + '/' + config['scop_id'] + '/' + config['log_path'] + '/' + config['com_id'] + '/02_map-quant.log'
     threads:
         128
     script:
         'code/02_map-quant.py'
 
-rule update:
+rule makeFASTQtables:
     input:
-        rules.quant.output
+        rules.mapquant.output
     output:
-        temp('success/update-pool-table_complete.txt')
+        temp('success/make-FASTQ-tables_complete.txt')
     conda:
         'COMUNEQAID_R.yml'
-    log:
-        config['project_path'] + '/' + config['scop_id'] + '/' + config['log_path'] + '/' + config['com_id'] + '/03_update-pool-table.log'
     script:
-        'code/03_update-pool-table.R'
+        'code/03_make-FASTQ-tables.R'
 
-rule seurat:
+rule makereactionobject:
     input:
-        rules.update.output
+        rules.makeFASTQtables.output
     output:
-        temp('success/make-seurat_complete.txt')
+        temp('success/make-reaction-object_complete.txt')
     conda:
         'COMUNEQAID_R.yml'
-    log:
-        config['project_path'] + '/' + config['scop_id'] + '/' + config['log_path'] + '/' + config['com_id'] + '/04_make-seurat.log'
     script:
-        'code/04_make-seurat.R'
+        'code/04_make-reaction-object.R'
 
-rule aggregate:
+rule makeaggregatedobject:
     input:
-        rules.seurat.output
+        rules.makereactionobject.output
     output:
-        temp('success/aggregate_complete.txt')
+        temp('success/make-aggregated-object_complete.txt')
     conda:
         'COMUNEQAID_R.yml'
-    log:
-        config['project_path'] + '/' + config['scop_id'] + '/' + config['log_path'] + '/' + config['com_id'] + '/05_aggregate.log'
     script:
-        'code/05_aggregate.R'
+        'code/05_make-aggregated-object.R'
+        
+rule makeqcoutput:
+    input:
+        rules.makeaggregatedobject.output
+    output:
+        temp('success/make-qc-output_complete.txt')
+    conda:
+        'COMUNEQAID_R.yml'
+    script:
+        'code/06_make-QC-output.R'
 

@@ -1,6 +1,6 @@
 channels:
-  - r
   - conda-forge
+  - r
   - bioconda
   - defaults
 dependencies:
@@ -28,3 +28,4 @@ dependencies:
   - r-kableextra
   - r-devtools
   - r-rjson
+  - r-intrinsicdimension

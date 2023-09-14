@@ -35,7 +35,7 @@ com.path <- file.path(
   project.path,
   'output',
   snakemake@config[['com_id']],
-  'COMUNEQAID_v2.0')
+  snakemake@config[['pipeline_version']])
 
 # Metadata
 suppressMessages({

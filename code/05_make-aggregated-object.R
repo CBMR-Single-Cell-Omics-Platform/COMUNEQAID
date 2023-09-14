@@ -1,13 +1,6 @@
 ################################################################################
 ##########                            Init                            ##########
 ################################################################################
-set.seed(3 + 15 + 13 + 21 + 14 + 5 + 17 + 1 + 9 + 4)
-
-# Date and time
-current.time <- Sys.time()
-date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
-date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
-
 # Packages
 suppressPackageStartupMessages({
   library(Seurat)
@@ -211,6 +204,12 @@ if (length(rnx.sheet[['reaction_id']]) > 1) {
         sep = '')
     seur.unfiltered.comb <- process_seur(seur.unfiltered.comb)
     seur.unfiltered.comb[['SCT_snn_res.0.8']] <- NULL
+    
+    seur.unfiltered.comb[['SCT_tsne1']] <- seur.unfiltered.comb@reductions$tsne@cell.embeddings[,1]
+    seur.unfiltered.comb[['SCT_tsne2']] <- seur.unfiltered.comb@reductions$tsne@cell.embeddings[,2]
+    seur.unfiltered.comb[['SCT_umap1']] <- seur.unfiltered.comb@reductions$umap@cell.embeddings[,1]
+    seur.unfiltered.comb[['SCT_umap2']] <- seur.unfiltered.comb@reductions$umap@cell.embeddings[,2]
+    
     cat('#\t..\n',
         '#\t..done\n',
         sep = '')
@@ -220,6 +219,12 @@ if (length(rnx.sheet[['reaction_id']]) > 1) {
         sep = '')
     seur.filtered.comb <- process_seur(seur.filtered.comb)
     seur.filtered.comb[['SCT_snn_res.0.8']] <- NULL
+    
+    seur.filtered.comb[['SCT_tsne1']] <- seur.filtered.comb@reductions$tsne@cell.embeddings[,1]
+    seur.filtered.comb[['SCT_tsne2']] <- seur.filtered.comb@reductions$tsne@cell.embeddings[,2]
+    seur.filtered.comb[['SCT_umap1']] <- seur.filtered.comb@reductions$umap@cell.embeddings[,1]
+    seur.filtered.comb[['SCT_umap2']] <- seur.filtered.comb@reductions$umap@cell.embeddings[,2]
+    
     cat('#\t..\n',
         '#\t..done\n',
         sep = '')
@@ -232,11 +237,23 @@ if (length(rnx.sheet[['reaction_id']]) > 1) {
                 file = file.path(aggr.stats.path,'seurat_unfiltered_metadata.csv'),
                 sep = ',',
                 row.names = T)
+    
+    seur.unfiltered.comb[['SCT_tsne1']] <- NULL
+    seur.unfiltered.comb[['SCT_tsne2']] <- NULL
+    seur.unfiltered.comb[['SCT_umap1']] <- NULL
+    seur.unfiltered.comb[['SCT_umap2']] <- NULL
+    
     cat('#\t..\t\"seurat_filtered_metadata.csv\"\n')
     write.table(x = seur.filtered.comb[[]],
                 file = file.path(aggr.stats.path,'seurat_filtered_metadata.csv'),
                 sep = ',',
                 row.names = T)
+    
+    seur.filtered.comb[['SCT_tsne1']] <- NULL
+    seur.filtered.comb[['SCT_tsne2']] <- NULL
+    seur.filtered.comb[['SCT_umap1']] <- NULL
+    seur.filtered.comb[['SCT_umap2']] <- NULL
+    
     cat('#\t..\n',
         '#\t..done\n',
         sep = '')

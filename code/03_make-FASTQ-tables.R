@@ -1,27 +1,19 @@
 ################################################################################
 ##########                            Init                            ##########
 ################################################################################
-set.seed(3 + 15 + 13 + 21 + 14 + 5 + 17 + 1 + 9 + 4)
+# Packages
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(Biobase)
+})
 
-# Date and time
-current.time <- Sys.time()
-date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
-date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
+# Shared functions
+source('code/shared.R')
 
 # Paths
 project.path <-
   file.path(snakemake@config[['project_path']],
             snakemake@config[['scop_id']])
-
-# Packages
-suppressWarnings(
-  suppressPackageStartupMessages({
-    library(tidyverse, quietly = T)
-    library(Biobase, quietly = T)
-  }))
-
-# Shared functions
-source('code/shared.R')
 
 # Metadata
 suppressMessages({
@@ -114,7 +106,7 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
   cat(paste0('#\t..\timporting demultiplexing stats..\n'),
       sep = '')
   
-  demult.stats.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,'BCL-convert_v4.0.3','Reports','Demultiplex_Stats.csv')
+  demult.stats.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Demultiplex_Stats.csv')
   read.tib <- read_csv(demult.stats.path,
                            col_select = c(index = 'SampleID', reads = '# Reads'),
                            col_types = c('c','d')) %>%
@@ -133,7 +125,7 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
   cat(paste0('#\t..\timporting unknown barcode stats..\n',
              '#\t..\n'),
       sep = '')
-  unknown.barcodes.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,'BCL-convert_v4.0.3','Reports','Top_Unknown_Barcodes.csv')
+  unknown.barcodes.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Top_Unknown_Barcodes.csv')
   unknown.barcodes.tib <- read_csv(unknown.barcodes.path,
                                    col_select = c(lane = 'Lane', index = index, index2 = index2, reads = '# Reads'),
                                    col_types = c('c','c','c','d')) %>%

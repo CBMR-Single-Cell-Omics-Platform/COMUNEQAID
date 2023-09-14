@@ -7,11 +7,14 @@ from datetime import (
 import pandas as pd
 from math import ceil
 from shared import merge_tables
+import subprocess
 
 current_time = datetime.now()
 date_and_time = current_time.strftime('%Y-%m-%d_%H-%M-%S')
 date_and_time_pretty = current_time.strftime('%Y-%m-%d %H:%M:%S')
-    
+
+bcl_convert_version = get_software_version('bcl-convert')
+
 def main():
     
     scop_id = snakemake.config['scop_id']
@@ -31,7 +34,7 @@ def main():
         q_fastq_path = os.path.join(
           fastq_path,
           bcl_folder,
-          'BCL-convert_v4.0.3')
+          bcl_convert_version)
         
         log_file = os.path.join(
           q_fastq_path,
@@ -39,7 +42,7 @@ def main():
         
         sheet_file = os.path.join(
           q_fastq_path,
-          f'sample-sheet_{com_id}.csv')
+          f'sample-sheet_{bcl_folder}.csv')
           
         os.makedirs(q_fastq_path, exist_ok=True)
 
@@ -89,8 +92,8 @@ def main():
 
 def bclconvert(scop_id, com_id, sequencing_id, bcl_folder, override_cycles, fastq_path, bcl_data_path, threads, log_file):
     bcl_path = os.path.join(bcl_data_path, bcl_folder)
-    fastq_folder = os.path.join(fastq_path, bcl_folder, 'BCL-convert_v4.0.3')
-    sample_sheet = os.path.join(fastq_path, bcl_folder, 'BCL-convert_v4.0.3', f'sample-sheet_{com_id}.csv')
+    fastq_folder = os.path.join(fastq_path, bcl_folder, bcl_convert_version)
+    sample_sheet = os.path.join(fastq_path, bcl_folder, bcl_convert_version, f'sample-sheet_{bcl_folder}.csv')
     
     logging.info('#' * 80)
     logging.info('#####                                                                      #####')

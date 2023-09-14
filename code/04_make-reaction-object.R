@@ -1,13 +1,6 @@
 ################################################################################
 ##########                            Init                            ##########
 ################################################################################
-set.seed(3 + 15 + 13 + 21 + 14 + 5 + 17 + 1 + 9 + 4)
-
-# Date and time
-current.time <- Sys.time()
-date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
-date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
-
 # Packages
 suppressPackageStartupMessages({
   library(foreach)
@@ -30,6 +23,9 @@ suppressPackageStartupMessages({
   library(intrinsicDimension)
 })
 
+# Shared functions
+source('code/shared.R')
+
 # Paths
 project.path <- file.path(
   snakemake@config[['project_path']],
@@ -40,9 +36,6 @@ com.path <- file.path(
   'output',
   snakemake@config[['com_id']],
   'COMUNEQAID_v2.0')
-
-# Shared functions
-source('code/shared.R')
 
 # Metadata
 suppressMessages({
@@ -61,14 +54,16 @@ suppressMessages({
 ################################################################################
   
 ####################  Iterate over reactions  ####################
-cl <- makeCluster(n.pools)
+cl <- makeCluster(length(row_number(rnx.sheet)))
 registerDoParallel(cl)
 
-foreach(i = seq(n.pools),
+foreach(rnx.i = row_number(rnx.sheet),
         .combine = 'c',
         .packages = c('Seurat','tximport','SingleCellExperiment','future',
                       'tidyverse','scater','scran','sctransform',
-                      'DropletUtils','Matrix','mclust')) %dopar% {
+                      'DropletUtils','Matrix','mclust','intrinsicDimension')) %dopar% {
+# for (rnx.i in row_number(rnx.sheet)) {
+                                                
                         ####################  Prep processing of rnx i  ####################
                         # Reaction vars
                         rnx.tib <- rnx.sheet[rnx.i,]
@@ -142,7 +137,7 @@ foreach(i = seq(n.pools),
                             select(bcl_folder) %>% 
                             unlist()
                           
-                          mat.files.10x <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],'salmon-alevin_v1.9.0_alevin-fry_v0.8.0',q.rnx,q.library.10x,'res')
+                          mat.files.10x <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,q.rnx,q.library.10x,'res')
                           if (!file.exists(mat.files.10x)) { stop('Not able to locate quants_mat.gz (gene expression)')}
                           
                           if ('hto' %in% lib.tib[['library_type']]) {
@@ -155,7 +150,7 @@ foreach(i = seq(n.pools),
                               select(bcl_folder) %>% 
                               unlist()
                             
-                            mat.files.hto <-file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],'salmon-alevin_v1.9.0_alevin-fry_v0.8.0',q.rnx,q.library.hto,'res')
+                            mat.files.hto <-file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,q.rnx,q.library.hto,'res')
                             if (!file.exists(mat.files.hto)) { stop('Not able to locate quants_mat.gz (HTO)')}
                           }
                           
@@ -246,9 +241,7 @@ foreach(i = seq(n.pools),
                           
                           call.droplets.list <- call_droplets(counts = counts.all,
                                                               protocol = q.protocol,
-                                                              cutoff = q.cutoff,
-                                                              skip.mod = F,
-                                                              force.mod = F)
+                                                              cutoff = q.cutoff)
                           
                           valid.bcs <- call.droplets.list[[1]]
                           bc.df <- call.droplets.list[[2]]

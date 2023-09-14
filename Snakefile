@@ -10,7 +10,7 @@ rule makeFASTQ:
     conda:
         'COMUNEQAID_python.yml'
     threads:
-        128
+        64
     script:
         'code/01_make-FASTQ.py'
 
@@ -43,6 +43,8 @@ rule makereactionobject:
         temp('success/make-reaction-object_complete.txt')
     conda:
         'COMUNEQAID_R.yml'
+    threads:
+        12
     script:
         'code/04_make-reaction-object.R'
 

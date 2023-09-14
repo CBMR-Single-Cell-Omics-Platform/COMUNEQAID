@@ -8,6 +8,12 @@ from datetime import (
   )
 import pandas as pd
 from shared import merge_tables
+import subprocess
+
+bcl_convert_version = get_software_version('bcl-convert')
+salmon_version = get_software_version('salmon')
+alevin_fry_version = get_software_version('alevin-fry')
+salmon_version_alevin_fry_version = f'{salmon_version}_{alevin_fry_version}'
 
 def main():
   
@@ -25,7 +31,7 @@ def main():
       snakemake.config['scop_id'],
       snakemake.config['out_path'],
       snakemake.config['com_id'],
-      'salmon-alevin_v1.9.0_alevin-fry_v0.8.0')
+      salmon_version_alevin_fry_version)
     
     sample_data = merge_tables(
         'sample_sheet', 'sample2reaction', 
@@ -77,7 +83,7 @@ def main():
         def helper(x, row):
             lane_string = '' if row['lane'] == '*' else f'_L00{row["lane"]}'
             file = row['index'] + '_S*' + lane_string + x
-            return os.path.join(fastq_path, row['bcl_folder'], 'BCL-convert_v4.0.3', file)
+            return os.path.join(fastq_path, row['bcl_folder'], bcl_convert_version, file)
         
         for _, row in reaction.iterrows():
             files_read_1 += glob.glob(helper('_R1_*.fastq.gz', row))
@@ -193,7 +199,7 @@ def alevin_fry(path_quant_out, direction, tgmap):
     os.system(f'alevin-fry collate \
         -r {path_quant_out}/map \
         -i {path_quant_out}/quant \
-        -t {snakemake.threads} \
+        -t 1 \
         2>&1 | tee {path_quant_out}/alevin-fry.log -a')
     
     os.system(f'alevin-fry quant \

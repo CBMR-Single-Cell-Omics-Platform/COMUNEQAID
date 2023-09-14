@@ -1,13 +1,6 @@
 ################################################################################
 ##########                            Init                            ##########
 ################################################################################
-set.seed(3 + 15 + 13 + 21 + 14 + 5 + 17 + 1 + 9 + 4)
-
-# Date and time
-current.time <- Sys.time()
-date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
-date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
-
 # Packages
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -62,6 +55,10 @@ suppressMessages({
   rnxsheet.rnx2lib <-
     full_join(as_tibble(snakemake@config[['reaction_sheet']]),
               as_tibble(snakemake@config[['reaction2library']]))
+  
+  seq.sheet <-
+    as_tibble(snakemake@config[['sequencing_sheet']])
+  
   rnx.sheet <-
     as_tibble(snakemake@config[['reaction_sheet']])
   
@@ -102,29 +99,35 @@ cat(rep('#',80),'\n',
     sep = '')
 
 # Table generation
-make_summary_table()
+suppressMessages({
+  make_summary_table()
+})
 
 cat('#\tmaking FASTQ plots..\n')
 # FASTQ generation
-for (bcl in snakemake@config[['sequencing_sheet']][['bcl_folder']]) {
+#for (bcl in snakemake@config[['sequencing_sheet']][['bcl_folder']]) {
+for (i in row_number(seq.sheet)) {
   
-  cat('#\t..\t',bcl,':\n',
+  seq.id <- seq.sheet[1,][['sequencing_id']]
+  bcl.folder <- seq.sheet[1,][['bcl_folder']]
+  
+  cat('#\t..\t',bcl.folder,':\n',
       sep = '')
   
   fastq.stats.path <- file.path(
     snakemake@config[['project_path']],
     snakemake@config[['scop_id']],
     snakemake@config[['fastq_path']],
-    bcl,
+    bcl.folder,
     'metadata')
   
   df.unknown.barcodes <- read.csv(file.path(fastq.stats.path,'unknown-barcodes.csv'))
   p.unknown.barcodes <- make_plot_top10bcl(df.unknown.barcodes)
   
-  cat('#\t..\t\t- \"FASTQ_top10-undetermined.png\"\n')
-  ggsave(filename = paste0('FASTQ_top10-undetermined.png'),
+  cat('#\t..\t\t- \"00_top-undetermined-barcodes.png\"\n')
+  ggsave(filename = paste0('00_top-undetermined-barcodes.png'),
          plot = p.unknown.barcodes,
-         path = plot.path,
+         path = file.path(plot.path,bcl.folder),
          width = 6,
          height = 4,
          dpi = 'retina')
@@ -132,10 +135,10 @@ for (bcl in snakemake@config[['sequencing_sheet']][['bcl_folder']]) {
   df.read.demultiplexing <- read.csv(file.path(fastq.stats.path,'read-demultiplexing.csv'))
   p.read.demultiplexing <- make_plot_bclDistribution(df.read.demultiplexing)
   
-  cat('#\t..\t\t- \"FASTQ_read-distribution.png\"\n')
-  ggsave(filename = paste0('FASTQ_read-distribution.png'),
+  cat('#\t..\t\t- \"00_read-index-distribution.png\"\n')
+  ggsave(filename = paste0('00_read-index-distribution.png'),
          plot = p.read.demultiplexing,
-         path = plot.path,
+         path = file.path(plot.path,bcl.folder),
          width = 6,
          height = 4,
          dpi = 'retina')
@@ -158,6 +161,8 @@ df.hto <- data.frame(Library = character(),
 
 cat('#\tmaking reaction plots..\n')
 for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
+  
+  dir.create(file.path(plot.path,rnx), recursive = T, showWarnings = F)
   
   cat('#\t..\t',rnx,':\n',
       sep = '')
@@ -183,10 +188,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
                                             rnx,
                                             snakemake@config[['reaction_sheet']][['seq_type']][snakemake@config[['reaction_sheet']][['reaction_id']] == rnx])
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_barcode-calling.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_barcode-calling.png'),
+  cat('#\t..\t\t- \"01_barcode-calling.png\"\n')
+  ggsave(filename = '01_barcode-calling.png',
          plot = p.celular.barcode.calling,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 8,
          height = 5,
          dpi = 'retina')
@@ -199,10 +204,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   
   p.hto.barcode.calling <- make_plot_htoThresh(hto.sample.calling.metadata,hto.cutoff.metadata,rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_antibody-calling.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_antibody-calling.png'),
+  cat('#\t..\t\t- \"02_antibody-calling.png\"\n')
+  ggsave(filename = '02_antibody-calling.png',
          plot = p.hto.barcode.calling,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 5,
          dpi = 'retina')
@@ -213,10 +218,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   
   p.violin.global <- make_plot_htoVlnGlobal(seurat.unfiltered.metadata, rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_HTO-counts_violin_global.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_HTO-counts_violin_global.png'),
+  cat('#\t..\t\t- \"02_HTO-counts_violin_global.png\"\n')
+  ggsave(filename = '02_HTO-counts_violin_global.png',
          plot = p.violin.global,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
@@ -224,10 +229,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   #### Sample classification {.tabset}
   p.violin.sample <- make_plot_htoVlnIndividual(seurat.unfiltered.metadata, rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_HTO-counts_violin_sample.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_HTO-counts_violin_sample.png'),
+  cat('#\t..\t\t- \"02_HTO-counts_violin_sample.png\"\n')
+  ggsave(filename = '02_HTO-counts_violin_sample.png',
          plot = p.violin.sample,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
@@ -237,10 +242,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   #### Global classification
   p.hto.tsne.global <- make_plot_htotsne(seurat.unfiltered.metadata, 'Global', rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_HTO-counts_tSNE_global.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_HTO-counts_tSNE_global.png'),
+  cat('#\t..\t\t- \"02_HTO-counts_tSNE_global.png\"\n')
+  ggsave(filename = '02_HTO-counts_tSNE_global.png',
          plot = p.hto.tsne.global,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
@@ -248,10 +253,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   #### Sample classification
   p.hto.tsne.sample <- make_plot_htotsne(seurat.unfiltered.metadata, 'Individual', rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_HTO-counts_tSNE_sample.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_HTO-counts_tSNE_sample.png'),
+  cat('#\t..\t\t- \"02_HTO-counts_tSNE_sample.png\"\n')
+  ggsave(filename = '02_HTO-counts_tSNE_sample.png',
          plot = p.hto.tsne.sample,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
@@ -261,38 +266,38 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   p.recovered.doublets.tsne <- make_plot_InfDoubl_std(seurat.unfiltered.metadata, reduction = 'tSNE', rnx)
   p.recovered.doublets.umap <- make_plot_InfDoubl_std(seurat.unfiltered.metadata, reduction = 'UMAP', rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA-counts_tSNE_recoverd-doublets.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA-counts_tSNE_recoverd-doublets.png'),
+  cat('#\t..\t\t- \"03_RNA-counts_tSNE_recoverd-doublets.png\"\n')
+  ggsave(filename = '03_RNA-counts_tSNE_recoverd-doublets.png',
          plot = p.recovered.doublets.tsne,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA-counts_UMAP_recoverd-doublets.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA-counts_UMAP_recoverd-doublets.png'),
+  cat('#\t..\t\t- \"03_RNA-counts_UMAP_recoverd-doublets.png\"\n')
+  ggsave(filename = '03_RNA-counts_UMAP_recoverd-doublets.png',
          plot = p.recovered.doublets.umap,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
   
   ### Proportion of neighboring doublets
-  p.doublet.neighbors.tsne <- make_plot_InfDoubl_prop(seurat.unfiltered.metadata, reduction = 'tSNE', rnx)
+  #p.doublet.neighbors.tsne <- make_plot_InfDoubl_prop(seurat.unfiltered.metadata, reduction = 'tSNE', rnx)
   p.doublet.neighbors.umap <- make_plot_InfDoubl_prop(seurat.unfiltered.metadata, reduction = 'UMAP', rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA-counts_tSNE_doublet_neighbors.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA-counts_tSNE_doublet_neighbors.png'),
-         plot = p.doublet.neighbors.tsne,
-         path = plot.path,
-         width = 6,
-         height = 6,
-         dpi = 'retina')
+  #cat('#\t..\t\t- \"04_RNA-counts_tSNE_doublet_neighbors.png\"\n')
+  #ggsave(filename = '04_RNA-counts_tSNE_doublet_neighbors.png',
+  #       plot = p.doublet.neighbors.tsne,
+  #       path = file.path(plot.path,rnx),
+  #       width = 6,
+  #       height = 6,
+  #       dpi = 'retina')
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA-counts_UMAP_doublet_neighbors.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA-counts_UMAP_doublet_neighbors.png'),
+  cat('#\t..\t\t- \"03_RNA-counts_UMAP_doublet_neighbors.png\"\n')
+  ggsave(filename = '03_RNA-counts_UMAP_doublet_neighbors.png',
          plot = p.doublet.neighbors.umap,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
@@ -302,41 +307,41 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   
   p.doublet.neighbour.proportion <- make_plot_InfDoubl_knee(doub.data, rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA_neighbor-doublet-calling.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA_neighbor-doublet-calling.png'),
+  cat('#\t..\t\t- \"03_RNA_neighbor-doublet-calling.png\"\n')
+  ggsave(filename = '03_RNA_neighbor-doublet-calling.png',
          plot = p.doublet.neighbour.proportion,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 4,
          dpi = 'retina')
   
   ### Intra-HTO doublets profile + proportion
-  p.neigbour.doublets.tsne <- make_plot_InfDoubl_cut(seurat.unfiltered.metadata, reduction = 'tSNE', rnx)
+  #p.neigbour.doublets.tsne <- make_plot_InfDoubl_cut(seurat.unfiltered.metadata, reduction = 'tSNE', rnx)
   p.neigbour.doublets.umap <- make_plot_InfDoubl_cut(seurat.unfiltered.metadata, reduction = 'UMAP', rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA-counts_tSNE_neighbor-doublets.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA-counts_tSNE_neighbor-doublets.png'),
-         plot = p.neigbour.doublets.tsne,
-         path = plot.path,
-         width = 6,
-         height = 4,
-         dpi = 'retina')
+  #cat('#\t..\t\t- \"04_RNA-counts_tSNE_neighbor-doublets.png\"\n')
+  #ggsave(filename = '04_RNA-counts_tSNE_neighbor-doublets.png',
+  #       plot = p.neigbour.doublets.tsne,
+  #       path = file.path(plot.path,rnx),
+  #       width = 6,
+  #       height = 4,
+  #       dpi = 'retina')
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA-counts_UMAP_neighbor-doublets.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA-counts_UMAP_neighbor-doublets.png'),
+  cat('#\t..\t\t- \"03_RNA-counts_UMAP_neighbor-doublets.png\"\n')
+  ggsave(filename = '03_RNA-counts_UMAP_neighbor-doublets.png',
          plot = p.neigbour.doublets.umap,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
-         height = 4,
+         height = 6,
          dpi = 'retina')
   
   ### RNA Violin plot - HTO
   p.violin.doublet.distribution <- make_plot_htoVlnAll(seurat.unfiltered.metadata, rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA-counts_violin_doublet_distribution.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA-counts_violin_doublet_distribution.png'),
+  cat('#\t..\t\t- \"03_RNA-counts_violin_doublet_distribution.png\"\n')
+  ggsave(filename = '03_RNA-counts_violin_doublet_distribution.png',
          plot = p.violin.doublet.distribution,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
@@ -348,10 +353,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   
   p.rna.violin.sample <- make_plot_rnaVln(seurat.filtered.metadata, rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_RNA-counts_violin_sample.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_RNA-counts_violin_sample.png'),
+  cat('#\t..\t\t- \"04_RNA-counts_violin_sample.png\"\n')
+  ggsave(filename = '04_RNA-counts_violin_sample.png',
          plot = p.rna.violin.sample,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
@@ -359,10 +364,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   ## UMAP {.tabset}
   p.sct.umap.sample <- make_plot_umap_class(seurat.filtered.metadata, rnx)
   
-  cat(paste0('#\t..\t\t- \"',rnx,'_SCT_UMAP_sample.png','\"\n'))
-  ggsave(filename = paste0(rnx,'_SCT_UMAP_sample.png'),
+  cat('#\t..\t\t- \"04_SCT_UMAP_sample.png\"\n')
+  ggsave(filename = '04_SCT_UMAP_sample.png',
          plot = p.sct.umap.sample,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 6,
          height = 6,
          dpi = 'retina')
@@ -464,8 +469,8 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
     
     df.hto <- rbind(df.hto,tmp.df.hto)
     
-    mat.files.10x <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],'salmon-alevin_v1.9.0_alevin-fry_v0.8.0',rnx,q.lib.10x,'res')
-    mat.files.hto <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],'salmon-alevin_v1.9.0_alevin-fry_v0.8.0',rnx,q.lib.hto,'res')
+    mat.files.10x <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,rnx,q.lib.10x,'res')
+    mat.files.hto <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,rnx,q.lib.hto,'res')
     
     feature.dump.10x <- suppressMessages(read_delim(file.path(mat.files.10x,'featureDump.txt'), delim = '\t'))
     featDump.hto <- suppressMessages(read_delim(file.path(mat.files.hto,'featureDump.txt'), delim = '\t'))
@@ -503,14 +508,57 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
       theme(legend.position = 'bottom') +
       ggtitle(rnx)
     
-    cat(paste0('#\t..\t\t- \"',rnx,'_UMI-UMI_scatter_global.png','\"\n'))
-    ggsave(filename = paste0(rnx, '_UMI-UMI_scatter_global.png'),
+    p <- patchwork::wrap_plots(p)
+    cat('#\t..\t\t- \"04_UMI-UMI_scatter_global.png\"\n')
+    ggsave(filename = '04_UMI-UMI_scatter_global.png',
            plot = p,
-           path = plot.path,
+           path = file.path(plot.path,rnx),
            width = 8,
            height = 6,
            dpi = 'retina')
   }
+}
+
+if (length(rnx.sheet[['reaction_id']]) > 1) {
+  
+  rnx <- 'aggregated'
+  
+  mat.stats.path <- file.path(
+    project.path,
+    snakemake@config[['out_path']],
+    snakemake@config[['com_id']],
+    'metadata',
+    rnx)
+  
+  # Summarize all
+  ## Violin
+  
+  seurat.filtered.metadata <- read.csv(file.path(mat.stats.path,'seurat_filtered_metadata.csv'))
+  
+  
+  p.rna.violin.sample <- make_plot_rnaVln(seurat.filtered.metadata, rnx)
+  
+  cat('#\t..\t\t- \"04_RNA-counts_violin_sample.png\"\n')
+  ggsave(filename = '04_RNA-counts_violin_sample.png',
+         plot = p.rna.violin.sample,
+         path = file.path(plot.path,rnx),
+         width = 6,
+         height = 6,
+         dpi = 'retina')
+  
+  ## UMAP {.tabset}
+  p.sct.umap.sample <- make_plot_umap_class(seurat.filtered.metadata, rnx)
+  
+  cat('#\t..\t\t- \"04_SCT_UMAP_sample.png\"\n')
+  ggsave(filename = '04_SCT_UMAP_sample.png',
+         plot = p.sct.umap.sample,
+         path = file.path(plot.path,rnx),
+         width = 6,
+         height = 6,
+         dpi = 'retina')
+}
+if (length(rnx.sheet[['reaction_id']]) == 1) {
+  rnx <- rnx.sheet[['reaction_id']]
 }
 
 if ('nuclei' %in% lib.tib[['seq_type']]) {
@@ -528,10 +576,11 @@ if ('nuclei' %in% lib.tib[['seq_type']]) {
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font))
   
-  cat('#\t..\t\t- \"UMI-distribution_splice-class.png\"\n')
-  ggsave(filename = 'UMI-distribution_splice-class.png',
+  p.distribution.splice <- patchwork::wrap_plots(p.distribution.splice)
+  cat('#\t..\t\t- \"05_UMI-distribution_splice-class.png\"\n')
+  ggsave(filename = '05_UMI-distribution_splice-class.png',
          plot = p.distribution.splice,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 12,
          height = 6,
          dpi = 'retina')
@@ -547,17 +596,18 @@ if ('hto' %in% lib.tib[['library_type']]) {
                   y = Labelpos),
               size = 3) +
     facet_wrap(~Library) +
-    coord_flip() + ggtitle('Read distribution by HTO class') +
+    coord_flip() + ggtitle('UMI distribution by HTO class') +
     xlab('Library ID') + ylab('UMI counts') + scale_fill_discrete(name = 'Classification') +
     scale_fill_manual(values = c(my.cols[['Doublet']],my.cols[['Singlet']],my.cols[['Negative']],my.cols[['Uncalled']])) +
     labs(fill = 'Classification') + 
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font))
   
-  cat('#\t..\t\t- \"UMI-distribution_HTO-class.png\"\n')
-  ggsave(filename = 'UMI-distribution_HTO-class.png',
+  p.distribution.hto <- patchwork::wrap_plots(p.distribution.hto)
+  cat('#\t..\t\t- \"05_UMI-distribution_HTO-class.png\"\n')
+  ggsave(filename = '05_UMI-distribution_HTO-class.png',
          plot = p.distribution.hto,
-         path = plot.path,
+         path = file.path(plot.path,rnx),
          width = 12,
          height = 6,
          dpi = 'retina')

@@ -1,8 +1,47 @@
+set.seed(102)
+
+# Date and time
+current.time <- Sys.time()
+date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
+date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
+
+# Software versions
+get_software_version <- function(software) {
+  commands <- list(
+    salmon = "salmon --version",
+    `alevin-fry` = "alevin-fry --version",
+    `bcl-convert` = "bcl-convert --version"
+  )
+  
+  if (!software %in% names(commands)) {
+    stop(paste("Unsupported software:", software))
+  }
+  
+  output <- system(commands[[software]], intern = TRUE)
+  
+  if (software == "bcl-convert") {
+    software_name <- unlist(strsplit(output, " "))[1]
+    version_full <- unlist(strsplit(output, " "))[3]
+    version <- paste0("v", paste(tail(unlist(strsplit(version_full, "\\.")), 3), collapse="."))
+  } else {
+    software_name <- unlist(strsplit(output, " "))[1]
+    version <- paste0("v", unlist(strsplit(output, " "))[2])
+  }
+  
+  return(paste0(tolower(software_name), "_", version))
+}
+
+bcl.convert.version <- get_software_version('bcl-convert')
+salmon.version = get_software_version('salmon')
+alevin.fry.version = get_software_version('alevin-fry')
+salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
+
+
 # Data processing
 load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, output_list = F) {
   # read in metadata
   cat('#\t..\t\tread in metadata..\n')
-  meta_info = fromJSON(file = file.path(frydir, 'quant.json'))
+  meta_info = rjson::fromJSON(file = file.path(frydir, 'quant.json'))
   ng = meta_info[['num_genes']]
   usa_mode = meta_info[['usa_mode']]
   
@@ -105,15 +144,30 @@ load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, out
   }
 }
 
-call_droplets <- function(counts, protocol, cutoff, skip.mod = F, force.mod = F) {
+call_droplets <- function(counts, protocol, cutoff) {
   
-  if (skip.mod == T & force.mod == T) {
-    cat('#\t..\twarning: unable to simultaneously skip AND force mod\n',
-        '#\t..\t[setting \'skip.mod\' == FALSE]\n',
-        '#\t..\n',
-        sep = '')
+  if(cutoff == 'auto') {
     skip.mod <- F
+    force.mod <- F
   }
+  
+  if(cutoff == 'correct') {
+    skip.mod <- F
+    force.mod <- T
+  }
+  
+  if(cutoff == 'skip') {
+    skip.mod <- T
+    force.mod <- F
+  }
+  
+  # if (skip.mod == T & force.mod == T) {
+  #   cat('#\t..\twarning: unable to simultaneously skip AND force mod\n',
+  #       '#\t..\t[setting \'skip.mod\' == FALSE]\n',
+  #       '#\t..\n',
+  #       sep = '')
+  #   skip.mod <- F
+  # }
   
   cat('#\t..\tcalling ',protocol,'..\n',
       sep = '')
@@ -186,7 +240,7 @@ call_droplets <- function(counts, protocol, cutoff, skip.mod = F, force.mod = F)
       bc.annot[['Inflection.upd']] <- metadata(bc.calls.modal)[['inflection']]
       bc.annot[['Rank_cutoff']] <- max(bc.df[['Rank']][bc.df[['nUMI_RNA']] > bc.annot[['Inflection.upd']]])
       
-      valid.bcs <- bc.df[['Barcode']][bc.df[['nUMI_RNA']] > bc.annot[['Inflection']]]
+      valid.bcs <- bc.df[['Barcode']][bc.df[['nUMI_RNA']] > bc.annot[['Inflection.upd']]]
       cat('#\t..\t\t',protocol,':\t\t',length(valid.bcs),'\n',
           sep = '')
     }
@@ -352,8 +406,8 @@ get_knee_df <- function(counts, inflection, protocol) {
     
     tibble(Barcode = colnames(mat.rna),
            nUMI_RNA = Matrix::colSums(mat.rna),
-           nUMI_SPL = Matrix::colSums(mat.spl),
-           nUMI_UNS = Matrix::colSums(mat.uns),
+           nUMI_spliced = Matrix::colSums(mat.spl),
+           nUMI_unspliced = Matrix::colSums(mat.uns),
            Rank = row_number(desc(nUMI_RNA))) %>%
       mutate(State = ifelse(nUMI_RNA > inflection, 'Called', 'Uncalled')) %>%
       arrange(Rank) -> bc.df
@@ -520,7 +574,7 @@ make_summary_table <- function(){
       'dry-lab',
       'FASTQ',
       q.bcl,
-      'BCL-convert_v4.0.3',
+      bcl.convert.version,
       'Reports')
     
     demultiplex.stats <- read_csv(file.path(demult.stats.path,
@@ -549,7 +603,7 @@ make_summary_table <- function(){
     
     # Read featureDump.txt
     #mat.files.10x <- file.path(dir.proj,'scRNAseq','03_PipelineOut',com.ID,'10x',pool.10x,'res')
-    mat.files.10x <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],'salmon-alevin_v1.9.0_alevin-fry_v0.8.0',q.rnx,q.lib.10x,'res')
+    mat.files.10x <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,q.rnx,q.lib.10x,'res')
     feature.dump.10x <- suppressMessages(read_delim(file.path(mat.files.10x,'featureDump.txt'), delim = '\t'))
     
     stats.10x[['Reads (Raw)']] <- q.reads
@@ -712,7 +766,7 @@ make_summary_table <- function(){
         'dry-lab',
         'FASTQ',
         q.bcl,
-        'BCL-convert_v4.0.3',
+        bcl.convert.version,
         'Reports')
       
       demultiplex.stats <- read_csv(file.path(demult.stats.path,
@@ -740,7 +794,7 @@ make_summary_table <- function(){
       valid.cbs <- bc.df[['Barcode']][bc.df[['State']] == 'Called']
       
       # Read featureDump.txt
-      mat.files.hto <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],'salmon-alevin_v1.9.0_alevin-fry_v0.8.0',q.rnx,q.lib.hto,'res')
+      mat.files.hto <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,q.rnx,q.lib.hto,'res')
       featDump.hto <- suppressMessages(read_delim(file.path(mat.files.hto,'featureDump.txt'), delim = '\t'))
       
       stats.hto[['Reads (Raw)']] <- q.reads
@@ -849,6 +903,7 @@ make_plot_top10bcl <- function(df) {
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font))
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -864,6 +919,7 @@ make_plot_bclDistribution <- function(df) {
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom')
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1000,6 +1056,7 @@ make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom')
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1022,7 +1079,8 @@ make_plot_htoVlnGlobal <- function(meta.data, rnx.name) {
     theme(legend.position = 'none',
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
-  
+
+  p <- patchwork::wrap_plots(p)  
   return(p)
 }
 
@@ -1052,6 +1110,7 @@ make_plot_htoVlnIndividual <- function(meta.data, rnx.name) {
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1093,8 +1152,7 @@ make_plot_htotsne <- function(meta.data, choosen.class = 'Individual', rnx.name)
       ggtitle(rnx.name)
   }
   
-  
-  
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1121,6 +1179,7 @@ make_plot_InfDoubl_std <- function(meta.data, reduction = 'tSNE', rnx.name) {
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name)
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1144,6 +1203,7 @@ make_plot_InfDoubl_prop <- function(meta.data, reduction = 'tSNE', rnx.name) {
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name)
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1162,6 +1222,7 @@ make_plot_InfDoubl_knee <- function(doub.data, rnx.name) {
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name)
   
+  p <- patchwork::wrap_plots(p)
   return(p)
   
 }
@@ -1191,6 +1252,7 @@ make_plot_InfDoubl_cut <- function(meta.data, reduction = 'tSNE', rnx.name) {
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name)
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1220,6 +1282,7 @@ make_plot_htoVlnAll <- function(meta.data, rnx.name) {
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1244,6 +1307,7 @@ make_plot_rnaVln <- function(meta.data, rnx.name) {
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1260,6 +1324,7 @@ make_plot_umap_class <- function(meta.data, rnx.name) {
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name, subtitle = 'SCT assay')
   
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 

@@ -29,3 +29,5 @@ dependencies:
   - r-devtools
   - r-rjson
   - r-intrinsicdimension
+  - salmon>=1.9.0
+  - alevin-fry>=0.8.0

@@ -1,6 +1,6 @@
 rule all:
     input:
-        'success/make-aggregated-object_complete.txt'
+        'success/make-qc-output_complete.txt'
 
 rule makeFASTQ:
     input:
@@ -33,6 +33,8 @@ rule makeFASTQtables:
         temp('success/make-FASTQ-tables_complete.txt')
     conda:
         'COMUNEQAID_R.yml'
+    threads:
+        1
     script:
         'code/03_make-FASTQ-tables.R'
 
@@ -55,6 +57,8 @@ rule makeaggregatedobject:
         temp('success/make-aggregated-object_complete.txt')
     conda:
         'COMUNEQAID_R.yml'
+    threads:
+        1
     script:
         'code/05_make-aggregated-object.R'
         
@@ -65,6 +69,8 @@ rule makeqcoutput:
         temp('success/make-qc-output_complete.txt')
     conda:
         'COMUNEQAID_R.yml'
+    threads:
+        1
     script:
         'code/06_make-QC-output.R'
 

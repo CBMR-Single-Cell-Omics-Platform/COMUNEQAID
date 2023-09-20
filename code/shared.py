@@ -6,6 +6,7 @@ Created on Tue Jul 25 15:02:40 2023
 """
 import pandas as pd
 from functools import reduce
+import subprocess
 
 def lenient_from_dict(my_dictionary):
     def convert_scalar_to_list(data):
@@ -32,7 +33,7 @@ def get_software_version(software):
     if software not in commands:
         raise ValueError(f"Unsupported software: {software}")
 
-    output = subprocess.check_output(commands[software], text=True).strip()
+    output = subprocess.check_output(commands[software], stderr=subprocess.STDOUT, text=True).strip()
     
     # For bcl-convert, we extract the last 3 segments of the version. For others, we take the full version.
     if software == "bcl-convert":

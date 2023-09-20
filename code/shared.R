@@ -5,7 +5,7 @@ current.time <- Sys.time()
 date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
 date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
 
-# Software versions
+# # Software versions
 get_software_version <- function(software) {
   commands <- list(
     salmon = "salmon --version",
@@ -17,18 +17,28 @@ get_software_version <- function(software) {
     stop(paste("Unsupported software:", software))
   }
   
-  output <- system(commands[[software]], intern = TRUE)
+  command_with_redirect <- paste(commands[[software]], "2>&1")
+  output <- system(command_with_redirect, intern = T)
   
+  # For bcl-convert, assuming it's a two-line output and version is on the first line
   if (software == "bcl-convert") {
-    software_name <- unlist(strsplit(output, " "))[1]
-    version_full <- unlist(strsplit(output, " "))[3]
-    version <- paste0("v", paste(tail(unlist(strsplit(version_full, "\\.")), 3), collapse="."))
+    words <- unlist(strsplit(output[1], " "))
   } else {
-    software_name <- unlist(strsplit(output, " "))[1]
-    version <- paste0("v", unlist(strsplit(output, " "))[2])
+    words <- unlist(strsplit(output, " "))
   }
   
-  return(paste0(tolower(software_name), "_", version))
+  software_name <- tolower(words[1])
+  
+  if (software == "bcl-convert") {
+    version_full <- words[3]
+    version_segments <- unlist(strsplit(version_full, "\\."))
+    
+    version <- paste0("v", paste(tail(version_segments, 3), collapse="."))
+  } else {
+    version <- paste0("v", words[2])
+  }
+  
+  return(paste0(software_name, "_", version))
 }
 
 bcl.convert.version <- get_software_version('bcl-convert')
@@ -160,14 +170,6 @@ call_droplets <- function(counts, protocol, cutoff) {
     skip.mod <- T
     force.mod <- F
   }
-  
-  # if (skip.mod == T & force.mod == T) {
-  #   cat('#\t..\twarning: unable to simultaneously skip AND force mod\n',
-  #       '#\t..\t[setting \'skip.mod\' == FALSE]\n',
-  #       '#\t..\n',
-  #       sep = '')
-  #   skip.mod <- F
-  # }
   
   cat('#\t..\tcalling ',protocol,'..\n',
       sep = '')

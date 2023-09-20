@@ -6,8 +6,10 @@ from datetime import (
   )
 import pandas as pd
 from math import ceil
-from shared import merge_tables
-import subprocess
+from shared import (
+  merge_tables,
+  get_software_version
+  )
 
 current_time = datetime.now()
 date_and_time = current_time.strftime('%Y-%m-%d_%H-%M-%S')

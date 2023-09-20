@@ -7,8 +7,10 @@ from datetime import (
   datetime
   )
 import pandas as pd
-from shared import merge_tables
-import subprocess
+from shared import (
+  merge_tables,
+  get_software_version
+  )
 
 bcl_convert_version = get_software_version('bcl-convert')
 salmon_version = get_software_version('salmon')

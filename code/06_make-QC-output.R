@@ -106,10 +106,9 @@ suppressMessages({
 cat('#\tmaking FASTQ plots..\n')
 # FASTQ generation
 #for (bcl in snakemake@config[['sequencing_sheet']][['bcl_folder']]) {
-for (i in row_number(seq.sheet)) {
+for (seq.id in seq.sheet[["sequencing_id"]]) {
   
-  seq.id <- seq.sheet[1,][['sequencing_id']]
-  bcl.folder <- seq.sheet[1,][['bcl_folder']]
+  bcl.folder <- filter(seq.sheet, sequencing_id == seq.id)[["bcl_folder"]]
   
   cat('#\t..\t',bcl.folder,':\n',
       sep = '')

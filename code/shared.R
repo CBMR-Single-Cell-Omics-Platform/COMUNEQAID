@@ -5,46 +5,46 @@ current.time <- Sys.time()
 date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
 date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
 
-# # Software versions
-# get_software_version <- function(software) {
-#   commands <- list(
-#     salmon = "salmon --version",
-#     `alevin-fry` = "alevin-fry --version",
-#     `bcl-convert` = "bcl-convert --version"
-#   )
-#   
-#   if (!software %in% names(commands)) {
-#     stop(paste("Unsupported software:", software))
-#   }
-#   
-#   command_with_redirect <- paste(commands[[software]], "2>&1")
-#   output <- system(command_with_redirect, intern = T)
-#   
-#   # For bcl-convert, assuming it's a two-line output and version is on the first line
-#   if (software == "bcl-convert") {
-#     words <- unlist(strsplit(output[1], " "))
-#   } else {
-#     words <- unlist(strsplit(output, " "))
-#   }
-#   
-#   software_name <- tolower(words[1])
-#   
-#   if (software == "bcl-convert") {
-#     version_full <- words[3]
-#     version_segments <- unlist(strsplit(version_full, "\\."))
-#     
-#     version <- paste0("v", paste(tail(version_segments, 3), collapse="."))
-#   } else {
-#     version <- paste0("v", words[2])
-#   }
-#   
-#   return(paste0(software_name, "_", version))
-# }
-# 
-# bcl.convert.version <- get_software_version('bcl-convert')
-# salmon.version = get_software_version('salmon')
-# alevin.fry.version = get_software_version('alevin-fry')
-# salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
+# Software versions
+get_software_version <- function(software) {
+  commands <- list(
+    salmon = "salmon --version",
+    `alevin-fry` = "alevin-fry --version",
+    `bcl-convert` = "bcl-convert --version"
+  )
+
+  if (!software %in% names(commands)) {
+    stop(paste("Unsupported software:", software))
+  }
+
+  command_with_redirect <- paste(commands[[software]], "2>&1")
+  output <- system(command_with_redirect, intern = T)
+
+  # For bcl-convert, assuming it's a two-line output and version is on the first line
+  if (software == "bcl-convert") {
+    words <- unlist(strsplit(output[1], " "))
+  } else {
+    words <- unlist(strsplit(output, " "))
+  }
+
+  software_name <- tolower(words[1])
+
+  if (software == "bcl-convert") {
+    version_full <- words[3]
+    version_segments <- unlist(strsplit(version_full, "\\."))
+
+    version <- paste0("v", paste(tail(version_segments, 3), collapse="."))
+  } else {
+    version <- paste0("v", words[2])
+  }
+
+  return(paste0(software_name, "_", version))
+}
+
+bcl.convert.version <- get_software_version('bcl-convert')
+salmon.version = get_software_version('salmon')
+alevin.fry.version = get_software_version('alevin-fry')
+salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
 
 
 # Data processing
@@ -545,9 +545,9 @@ make_summary_table <- function(){
     'UMIs (intra-HTO)' = double(), 'UMIs/Cell (intra-HTO)' = double()
   )
   
-  for (rnx.i in row_number(rnx.sheet)) {
+  for (rnx.i in rnx.sheet[["reaction_id"]]) {
     
-    rnx.tib <- rnx.sheet[rnx.i,]
+    rnx.tib <- filter(rnx.sheet, reaction_id == rnx.i)
     
     q.rnx <- rnx.tib[['reaction_id']]
     q.protocol <- rnx.tib[['seq_type']]
@@ -737,9 +737,9 @@ make_summary_table <- function(){
       'Reads - RNA (Singlet %)' = character()
     )
     
-    for (rnx.i in row_number(rnx.sheet)) {
+    for (rnx.i in rnx.sheet[["reaction_id"]]) {
       
-      rnx.tib <- rnx.sheet[rnx.i,]
+      rnx.tib <- filter(rnx.sheet, reaction_id == rnx.i)
       
       q.rnx <- rnx.tib[['reaction_id']]
       q.protocol <- rnx.tib[['seq_type']]

@@ -6,45 +6,45 @@ date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
 date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
 
 # # Software versions
-get_software_version <- function(software) {
-  commands <- list(
-    salmon = "salmon --version",
-    `alevin-fry` = "alevin-fry --version",
-    `bcl-convert` = "bcl-convert --version"
-  )
-  
-  if (!software %in% names(commands)) {
-    stop(paste("Unsupported software:", software))
-  }
-  
-  command_with_redirect <- paste(commands[[software]], "2>&1")
-  output <- system(command_with_redirect, intern = T)
-  
-  # For bcl-convert, assuming it's a two-line output and version is on the first line
-  if (software == "bcl-convert") {
-    words <- unlist(strsplit(output[1], " "))
-  } else {
-    words <- unlist(strsplit(output, " "))
-  }
-  
-  software_name <- tolower(words[1])
-  
-  if (software == "bcl-convert") {
-    version_full <- words[3]
-    version_segments <- unlist(strsplit(version_full, "\\."))
-    
-    version <- paste0("v", paste(tail(version_segments, 3), collapse="."))
-  } else {
-    version <- paste0("v", words[2])
-  }
-  
-  return(paste0(software_name, "_", version))
-}
-
-bcl.convert.version <- get_software_version('bcl-convert')
-salmon.version = get_software_version('salmon')
-alevin.fry.version = get_software_version('alevin-fry')
-salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
+# get_software_version <- function(software) {
+#   commands <- list(
+#     salmon = "salmon --version",
+#     `alevin-fry` = "alevin-fry --version",
+#     `bcl-convert` = "bcl-convert --version"
+#   )
+#   
+#   if (!software %in% names(commands)) {
+#     stop(paste("Unsupported software:", software))
+#   }
+#   
+#   command_with_redirect <- paste(commands[[software]], "2>&1")
+#   output <- system(command_with_redirect, intern = T)
+#   
+#   # For bcl-convert, assuming it's a two-line output and version is on the first line
+#   if (software == "bcl-convert") {
+#     words <- unlist(strsplit(output[1], " "))
+#   } else {
+#     words <- unlist(strsplit(output, " "))
+#   }
+#   
+#   software_name <- tolower(words[1])
+#   
+#   if (software == "bcl-convert") {
+#     version_full <- words[3]
+#     version_segments <- unlist(strsplit(version_full, "\\."))
+#     
+#     version <- paste0("v", paste(tail(version_segments, 3), collapse="."))
+#   } else {
+#     version <- paste0("v", words[2])
+#   }
+#   
+#   return(paste0(software_name, "_", version))
+# }
+# 
+# bcl.convert.version <- get_software_version('bcl-convert')
+# salmon.version = get_software_version('salmon')
+# alevin.fry.version = get_software_version('alevin-fry')
+# salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
 
 
 # Data processing
@@ -484,15 +484,27 @@ HTO_classifcation = function(discrete, hto_mcl.p, assay){
   return(classification.metadata)
 }
 
+catHeader <- function(text = "", level = 3) {
+  
+  cat(paste0("\n\n",
+             paste(rep("#", level), collapse = ""),
+             " ", text, "\n"))
+}
+
+catHeader_w_tabset <- function(text = "", level = 3) {
+  
+  cat(paste0("\n\n",
+             paste(rep("#", level), collapse = ""),
+             " ", text, " {.tabset}","\n"))
+}
+
 # Visualization 
 plotting.font <- 'Helvetica'
 base.size = 10
 
-my.cols <- c(
-  'Doublet' = '#E56786', 'Negative' = '#00ACB9', 'Singlet' = '#7E9D00',
-  'Called'    = '#C1E24D', 'Uncalled'  = '#FFB2FF',
-  'Highlight' = '#de3163', 'Lowlight'  = '#f4b8c9',
-  'Greyneric' = '#878686')
+my.cols <- c('Doublet' = '#E56786','Negative' = '#00ACB9','Singlet' = '#7E9D00',
+             'Called' = '#C1E24D','Uncalled' = '#FFB2FF',
+             'Highlight' = '#de3163','Lowlight' = '#f4b8c9','Greyneric' = '#878686')
 
 softPallet <- function(n){
   colorspace::sequential_hcl(n = n,

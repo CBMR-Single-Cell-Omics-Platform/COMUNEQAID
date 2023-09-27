@@ -214,7 +214,7 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   
   ### HTO expression
   #### Global classification
-  seurat.unfiltered.metadata <- read.csv(file.path(mat.stats.path,'seurat_unfiltered_metadata.csv'))
+  seurat.unfiltered.metadata <- read.csv(file.path(mat.stats.path,'seurat_unfiltered_metadata.csv'), colClasses=c("sampleID"="character"))
   
   p.violin.global <- make_plot_htoVlnGlobal(seurat.unfiltered.metadata, rnx)
   
@@ -348,7 +348,7 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   
   # Summarize all
   ## Violin
-  seurat.filtered.metadata <- read.csv(file.path(mat.stats.path,'seurat_filtered_metadata.csv'))
+  seurat.filtered.metadata <- read.csv(file.path(mat.stats.path,'seurat_filtered_metadata.csv'), colClasses=c("sampleID"="character"))
   
   
   p.rna.violin.sample <- make_plot_rnaVln(seurat.filtered.metadata, rnx)

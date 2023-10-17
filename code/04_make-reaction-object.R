@@ -203,7 +203,7 @@ foreach(rnx.i = rnx.sheet[["reaction_id"]],
       counts.uns <- counts.all[['unspliced']]
     }
     if (q.protocol == 'cells') {
-      counts.rna <- load_fry(frydir = mat.files.10x)
+      counts.rna <- counts.all <- load_fry(frydir = mat.files.10x)
     }
     
     ####################  Read HTO matrices ####################

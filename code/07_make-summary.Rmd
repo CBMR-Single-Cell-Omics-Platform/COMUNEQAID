@@ -28,21 +28,28 @@ tagList(plotly:::plotly_empty())
 ```
 
 ```{r Functions}
-tmp.config <- yaml::read_yaml('/maps/projects/scop/data/SCOP_2021_0142_test/output/2023-08-30_brain-cell-line_human/COMUNEQAID_v2.0/COMUNEQAID-pipeline/2023-08-30_brain-cell-line_human.yml')
-# snakemake@config -> tmp.config
+library(yaml)
+setClass("mock_snakemake", representation(config = "list"))
+
+config <- yaml::read_yaml(
+  '/maps/projects/scop/data/SCOP_2021_0142_test/output/2023-08-30_brain-cell-line_human/COMUNEQAID_v2.0/COMUNEQAID-pipeline/2023-08-30_brain-cell-line_human.yml'
+  )
+snakemake <- new("mock_snakemake", config = config)
+
+snakemake@config
 # Shared functions
 source('code/shared.R')
 
 # Paths
 project.path <- file.path(
-  tmp.config[['project_path']],
-  tmp.config[['scop_id']])
+  snakemake@config[['project_path']],
+  snakemake@config[['scop_id']])
 
 com.path <- file.path(
   project.path,
   'output',
-  tmp.config[['com_id']],
-  tmp.config[['pipeline_version']])
+  snakemake@config[['com_id']],
+  snakemake@config[['pipeline_version']])
 
 aggr.path <- file.path(
   com.path,
@@ -65,26 +72,26 @@ log.file <- file.path(
 # Metadata
 suppressMessages({
   omnisheet <- 
-    as_tibble(tmp.config[['sample_sheet']]) %>% 
-    full_join(as_tibble(tmp.config[['sample2reaction']])) %>% 
-    full_join(as_tibble(tmp.config[['reaction_sheet']])) %>% 
-    full_join(as_tibble(tmp.config[['reaction2library']])) %>% 
-    full_join(as_tibble(tmp.config[['library_sheet']])) %>% 
-    full_join(as_tibble(tmp.config[['library2sequencing']])) %>% 
-    full_join(as_tibble(tmp.config[['sequencing_sheet']]))
+    as_tibble(snakemake@config[['sample_sheet']]) %>% 
+    full_join(as_tibble(snakemake@config[['sample2reaction']])) %>% 
+    full_join(as_tibble(snakemake@config[['reaction_sheet']])) %>% 
+    full_join(as_tibble(snakemake@config[['reaction2library']])) %>% 
+    full_join(as_tibble(snakemake@config[['library_sheet']])) %>% 
+    full_join(as_tibble(snakemake@config[['library2sequencing']])) %>% 
+    full_join(as_tibble(snakemake@config[['sequencing_sheet']]))
 
   rnxsheet.rnx2lib <-
-    full_join(as_tibble(tmp.config[['reaction_sheet']]),
-              as_tibble(tmp.config[['reaction2library']]))
+    full_join(as_tibble(snakemake@config[['reaction_sheet']]),
+              as_tibble(snakemake@config[['reaction2library']]))
   
   seq.sheet <-
-    as_tibble(tmp.config[['sequencing_sheet']])
+    as_tibble(snakemake@config[['sequencing_sheet']])
   
   rnx.sheet <-
-    as_tibble(tmp.config[['reaction_sheet']])
+    as_tibble(snakemake@config[['reaction_sheet']])
   
-  samplesheet.sample2rnx <- full_join(as_tibble(tmp.config[['sample_sheet']]),
-            as_tibble(tmp.config[['sample2reaction']]))
+  samplesheet.sample2rnx <- full_join(as_tibble(snakemake@config[['sample_sheet']]),
+            as_tibble(snakemake@config[['sample2reaction']]))
 })
 
 ```
@@ -144,9 +151,9 @@ for (i in row_number(seq.sheet)) {
   bcl.folder <- seq.sheet[1,][['bcl_folder']]
 
   fastq.stats.path <- file.path(
-    tmp.config[['project_path']],
-    tmp.config[['scop_id']],
-    tmp.config[['fastq_path']],
+    snakemake@config[['project_path']],
+    snakemake@config[['scop_id']],
+    snakemake@config[['fastq_path']],
     bcl.folder,
     'metadata')
   

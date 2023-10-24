@@ -5,47 +5,46 @@ current.time <- Sys.time()
 date.and.time <- format(current.time, "%Y-%m-%d_%H-%M-%S")
 date.and.time.pretty <- format(current.time, "%Y-%m-%d %H:%M:%S")
 
-# # Software versions
-# get_software_version <- function(software) {
-#   commands <- list(
-#     salmon = "salmon --version",
-#     `alevin-fry` = "alevin-fry --version",
-#     `bcl-convert` = "bcl-convert --version"
-#   )
-#   
-#   if (!software %in% names(commands)) {
-#     stop(paste("Unsupported software:", software))
-#   }
-#   
-#   command_with_redirect <- paste(commands[[software]], "2>&1")
-#   output <- system(command_with_redirect, intern = T)
-#   
-#   # For bcl-convert, assuming it's a two-line output and version is on the first line
-#   if (software == "bcl-convert") {
-#     words <- unlist(strsplit(output[1], " "))
-#   } else {
-#     words <- unlist(strsplit(output, " "))
-#   }
-#   
-#   software_name <- tolower(words[1])
-#   
-#   if (software == "bcl-convert") {
-#     version_full <- words[3]
-#     version_segments <- unlist(strsplit(version_full, "\\."))
-#     
-#     version <- paste0("v", paste(tail(version_segments, 3), collapse="."))
-#   } else {
-#     version <- paste0("v", words[2])
-#   }
-#   
-#   return(paste0(software_name, "_", version))
-# }
-# 
-# bcl.convert.version <- get_software_version('bcl-convert')
-# salmon.version = get_software_version('salmon')
-# alevin.fry.version = get_software_version('alevin-fry')
-# salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
+# Software versions
+get_software_version <- function(software) {
+  commands <- list(
+    salmon = "salmon --version",
+    `alevin-fry` = "alevin-fry --version",
+    `bcl-convert` = "bcl-convert --version"
+  )
+  
+  if (!software %in% names(commands)) {
+    stop(paste("Unsupported software:", software))
+  }
+  
+  command_with_redirect <- paste(commands[[software]], "2>&1")
+  output <- system(command_with_redirect, intern = T)
+  
+  # For bcl-convert, assuming it's a two-line output and version is on the first line
+  if (software == "bcl-convert") {
+    words <- unlist(strsplit(output[1], " "))
+  } else {
+    words <- unlist(strsplit(output, " "))
+  }
+  
+  software_name <- tolower(words[1])
+  
+  if (software == "bcl-convert") {
+    version_full <- words[3]
+    version_segments <- unlist(strsplit(version_full, "\\."))
+    
+    version <- paste0("v", paste(tail(version_segments, 3), collapse="."))
+  } else {
+    version <- paste0("v", words[2])
+  }
+  
+  return(paste0(software_name, "_", version))
+}
 
+bcl.convert.version <- get_software_version('bcl-convert')
+salmon.version = get_software_version('salmon')
+alevin.fry.version = get_software_version('alevin-fry')
+salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
 
 # Data processing
 load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, output_list = F) {
@@ -1037,7 +1036,7 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
     scale_fill_manual(name = '',
                       values = c(my.cols[['Called']],my.cols[['Uncalled']]),
                       guide = "none") +
-    labs(x = 'UMI counts', y = 'Frequency') +
+    labs(x = 'UMI counts', y = 'Cell barcode frequency') +
     scale_x_log10(labels = exponent_format(), limits = c(1,max(df$nUMI_RNA))) +
     scale_y_log10(labels = exponent_format(), limits = c(1,max(df$Rank))) +
     coord_flip() +
@@ -1059,8 +1058,8 @@ make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata
   p <- ggplot(hto.sample.calling.metadata, aes(x = expression, fill = above_cutoff)) +
     geom_histogram(bins = 100) +
     facet_wrap(~sample_id, scales = 'free',ncol = 3) +
-    xlab('Expression (CLR-norm)') +
-    ylab('UMI counts (HTO)') +
+    xlab('UMI counts (CLR-norm)') +
+    ylab('Cell barcode frequency') +
     scale_y_log10(labels = exponent_format()) +
     scale_fill_manual(name = '',
                       labels = c('HTO negative','HTO positive'),

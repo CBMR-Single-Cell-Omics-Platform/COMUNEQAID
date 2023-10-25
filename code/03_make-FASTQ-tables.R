@@ -9,36 +9,63 @@ suppressPackageStartupMessages({
 
 # Shared functions
 source('code/shared.R')
-
-# Paths
-project.path <-
-  file.path(snakemake@config[['project_path']],
-            snakemake@config[['scop_id']])
-
-# Metadata
-suppressMessages({
-  rnx2lib.libsheet.lib2seq.seqsheet <-
-    full_join(as_tibble(snakemake@config[['reaction2library']]),
-              as_tibble(snakemake@config[['library_sheet']])) %>% 
-    full_join(as_tibble(snakemake@config[['library2sequencing']])) %>% 
-    full_join(as_tibble(snakemake@config[['sequencing_sheet']]))
-})
-
+source('code/functions.R')
 
 ################################################################################
 ##########               Iterate over FASTQ folders                   ##########
 ################################################################################
 
-for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
+# It is possible to construct a config file with BCL folders without included 
+# reactions. Since this function is fast, and we may be interested in running 
+# the pipeline on BCL folders without considering the reactions, I am iterating
+# over all BLC folders in the config file.
+sequencing_sheet <- dplyr::as_tibble(snakemake@config[["sequencing_sheet"]])
+
+# Do we want all folders to have the same timepoint?
+timestamp <- lubridate::now("UTC")
+
+print_header <- function(this_run, timestamp)
+{
+  bcl <- this_run[["bcl_folder"]]
+  sequencing_id <- this_run[["sequencing_id"]]
+  override_cycles <- this_run[["override_cycles"]]
   
-  sequencing_id <- as_tibble(snakemake@config[['sequencing_sheet']]) %>% 
-    filter(bcl_folder == bcl) %>% 
-    select(sequencing_id) %>% 
-    unlist()
-  override_cycles <- as_tibble(snakemake@config[['sequencing_sheet']]) %>% 
-    filter(bcl_folder == bcl) %>% 
-    select(override_cycles) %>% 
-    unlist()
+  cat(rep('#', 80), '\n',
+      '#####                                                                      #####\n',
+      '#####                        Collecting FASTQ stats                        #####\n',
+      '#####                                                                      #####\n',
+      '#####                             3/6                                      #####\n',
+      '#####           ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░░░░░░░░░            #####\n',
+      '#####                                                                      #####\n',
+      rep('#',80), '\n',
+      '#####\n',
+      '##\n',
+      '##\tSCOP ID:      \t\t', snakemake@config[['scop_id']], '\n',
+      '##\tCOMUNEQAID ID:\t\t', snakemake@config[['com_id']], '\n',
+      '##\n',
+      '##\tsequencing_id:\t\t- ', sequencing_id, '\n',
+      '##\tbcl_folder:   \t\t- ', bcl,'\n',
+      '##\toverride_cycles:\t- ', override_cycles, '\n',
+      '##\n',
+      '##\n',
+      '##\t', format_time(timestamp, "pretty"), '\n',
+      '##\n',
+      '##\n',
+      '###\n',
+      rep('#', 80), '\n',
+      '#\n',
+      sep = '')
+}
+
+fastq_summaries <- function(bcl, config = snakemake@config) {
+  
+}
+
+for (bcl in sequencing_sheet[["bcl_folder"]]) {
+  this_run <- filter(sequencing_sheet, bcl_folder == bcl)
+  
+  out_folder <- file.path(fastq_path(), bcl, "metadata")
+  
   
   read.tib <-
     tibble(
@@ -55,16 +82,15 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
       bcl_folder = character()
     )
   
-  fastq.stats.path <- file.path(
-    snakemake@config[['project_path']],
-    snakemake@config[['scop_id']],
+  fastq_stats_path <- file.path(
+    project_path(),
     snakemake@config[['fastq_path']],
     bcl,
     'metadata')
   
-  log.file <- file.path(
-    fastq.stats.path,
-    paste0(date.and.time,'.log'))
+  log_file <- file.path(
+    fastq_stats_path,
+    paste0(date_and_time(),'.log'))
   
   dir.create(fastq.stats.path, recursive = T, showWarnings = F)
   
@@ -74,31 +100,7 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
        type = 'output', split = T)
   
   # Startup message
-  cat(rep('#',80),'\n',
-      '#####                                                                      #####\n',
-      '#####                        Collecting FASTQ stats                        #####\n',
-      '#####                                                                      #####\n',
-      '#####                             3/6                                      #####\n',
-      '#####           ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░░░░░░░░░            #####\n',
-      '#####                                                                      #####\n',
-      rep('#',80),'\n',
-      '#####\n',
-      '##\n',
-      '##\tSCOP ID:      \t\t',snakemake@config[['scop_id']],'\n',
-      '##\tCOMUNEQAID ID:\t\t',snakemake@config[['com_id']],'\n',
-      '##\n',
-      '##\tsequencing_id:\t\t- ',sequencing_id,'\n',
-      '##\tbcl_folder:   \t\t- ',bcl,'\n',
-      '##\toverride_cycles:\t- ',override_cycles,'\n',
-      '##\n',
-      '##\n',
-      '##\t',date.and.time.pretty,'\n',
-      '##\n',
-      '##\n',
-      '###\n',
-      rep('#',80),'\n',
-      '#\n',
-      sep = '')
+  print_header()
   
   cat(paste0('#\t\tFASTQ set:\t',bcl,'\n'),
       sep = '')
@@ -106,7 +108,19 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
   cat(paste0('#\t..\timporting demultiplexing stats..\n'),
       sep = '')
   
-  demult.stats.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Demultiplex_Stats.csv')
+  reads <- readr::read_csv(demult.stats.path, 
+                  col_select = c("index" = "SampleID", "reads" = "# Reads"), 
+                  col_types = c("index" = readr::col_character(), 
+                                "reads" = readr::col_integer())) |>
+    dplyr::group_by(index) |>
+    dplyr::summarise(reads = sum(reads))
+  
+  types <- merge_sheets("reaction2library", "library_sheet", config = config) |>
+    select(-c("library_id", "reaction_id"))
+  types <- rbind(types, c("Undetermined", "Undetermined"))
+  merge.data.frame(types, reads)
+  
+  demult.stats.path <- file.path(project_path(),'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Demultiplex_Stats.csv')
   read.tib <- read_csv(demult.stats.path,
                            col_select = c(index = 'SampleID', reads = '# Reads'),
                            col_types = c('c','d')) %>%
@@ -125,7 +139,7 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
   cat(paste0('#\t..\timporting unknown barcode stats..\n',
              '#\t..\n'),
       sep = '')
-  unknown.barcodes.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Top_Unknown_Barcodes.csv')
+  unknown.barcodes.path <- file.path(project_path(),'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Top_Unknown_Barcodes.csv')
   unknown.barcodes.tib <- read_csv(unknown.barcodes.path,
                                    col_select = c(lane = 'Lane', index = index, index2 = index2, reads = '# Reads'),
                                    col_types = c('c','c','c','d')) %>%

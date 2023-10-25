@@ -59,31 +59,34 @@ filtered.velo.file <- file.path(
   aggr.path,
   'seurat_velocity_filtered.rds')
 
-dir.create(aggr.stats.path, recursive = T, showWarnings = F)
-
 # Metadata
 suppressMessages({
   rnx.sheet <-
     as_tibble(snakemake@config[['reaction_sheet']])
 })
 
+q.protocol <- unique(rnx.sheet[['seq_type']])
+
 if (length(rnx.sheet[['reaction_id']]) == 1) {
-  message <- paste0('################################################################################\n',
-                    'Attempted to aggregate single reaction - skipping process\n',
-                    '################################################################################\n')
+  # message <- paste0('################################################################################\n',
+  #                   'Attempted to aggregate single reaction - skipping process\n',
+  #                   '################################################################################\n')
+  cat(paste0('################################################################################\n',
+             'Attempted to aggregate single reaction - skipping process\n',
+             '################################################################################\n'))
   
-  # Write the message to a text file
-  writeLines(message,
-             file.path(
-               aggr.path,
-               paste0('_skipped_pipestance_',date.and.time,'.log')))
-  cat(message)
+  # # Write the message to a text file
+  # writeLines(message,
+  #            file.path(
+  #              aggr.path,
+  #              paste0('_skipped_pipestance_',date.and.time,'.log')))
+  # cat(message)
 }
 
 if (length(rnx.sheet[['reaction_id']]) > 1) {
   
   if (file.exists(unfiltered.file) &
-      file.exists(filtered.file)){
+      file.exists(filtered.file)) {
     message <- paste0('################################################################################\n',
                       'Seurat objects already exists - skipping pipestance\n',
                       '################################################################################\n')
@@ -97,9 +100,10 @@ if (length(rnx.sheet[['reaction_id']]) > 1) {
   }
   
   if (!file.exists(unfiltered.file) &
-      !file.exists(filtered.file)){
+      !file.exists(filtered.file)) {
     
     dir.create(aggr.path, recursive = T, showWarnings = F)
+    dir.create(aggr.stats.path, recursive = T, showWarnings = F)
     
     ################################################################################
     ##########                 Preparing aggregated output                ##########
@@ -152,7 +156,7 @@ if (length(rnx.sheet[['reaction_id']]) > 1) {
       }
       cat('#\t..\t\t',rnx,' (unfiltered)\n')
       readRDS(tmp.file)
-      })
+    })
     
     seur.filtered.list <- lapply(rnx.sheet[['reaction_id']], function(rnx) {
       q.protocol <- rnx.sheet[rnx.sheet[['reaction_id']] == rnx,][['seq_type']]
@@ -262,8 +266,9 @@ if (length(rnx.sheet[['reaction_id']]) > 1) {
         '#\twriting seurat objects..\n',
         sep = '')
     
-
-    if (!is.null(seur.unfiltered.comb[['spliced']])) {
+    
+    # if (!is.null(seur.unfiltered.comb[['spliced']])) {
+    if (q.protocol == 'nuclei') {
       
       cat('#\t..\t\"seurat_velocity_unfiltered.rds\"\n')
       saveRDS(seur.unfiltered.comb, unfiltered.velo.file)

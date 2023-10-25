@@ -1037,7 +1037,7 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
     scale_fill_manual(name = '',
                       values = c(my.cols[['Called']],my.cols[['Uncalled']]),
                       guide = "none") +
-    labs(x = 'UMI counts', y = 'Frequency') +
+    labs(x = 'UMI counts', y = 'Cell barcode frequency') +
     scale_x_log10(labels = exponent_format(), limits = c(1,max(df$nUMI_RNA))) +
     scale_y_log10(labels = exponent_format(), limits = c(1,max(df$Rank))) +
     coord_flip() +
@@ -1059,8 +1059,8 @@ make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata
   p <- ggplot(hto.sample.calling.metadata, aes(x = expression, fill = above_cutoff)) +
     geom_histogram(bins = 100) +
     facet_wrap(~sample_id, scales = 'free',ncol = 3) +
-    xlab('Expression (CLR-norm)') +
-    ylab('UMI counts (HTO)') +
+    xlab('UMI counts (CLR-norm)') +
+    ylab('Cell barcode frequency') +
     scale_y_log10(labels = exponent_format()) +
     scale_fill_manual(name = '',
                       labels = c('HTO negative','HTO positive'),
@@ -1344,7 +1344,6 @@ make_plot_umap_class <- function(meta.data, rnx.name) {
 
 # Data
 bc.df.ref <- read.csv('data/bc-df-ref.csv')
-
 
 demux_counts <- function(stats_folder) {
   stats_file <- file.path(stats_folder, "Demultiplex_Stats.csv")

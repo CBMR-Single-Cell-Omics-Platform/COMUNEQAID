@@ -1344,3 +1344,91 @@ make_plot_umap_class <- function(meta.data, rnx.name) {
 
 # Data
 bc.df.ref <- read.csv('data/bc-df-ref.csv')
+
+
+demux_counts <- function(stats_folder) {
+  stats_file <- file.path(stats_folder, "Demultiplex_Stats.csv")
+  if (!file.exists(stats_file)) {
+    stop(stats_file, " does not exist.")
+  }
+  reads <- readr::read_csv(stats_file, 
+                           col_select = c(
+                             "Lane"          = "Lane",
+                             "index"         = "SampleID",
+                             "Reads"         = "# Reads",
+                             "Perfect Index" = "# Perfect Index Reads",
+                             "One Mismatch"  = "# One Mismatch Index Reads",
+                             "Two Mismatch"  = "# Two Mismatch Index Reads"
+                           ), 
+                           col_types = c(
+                             "Lane"          = readr::col_character(),
+                             "SampleID"      = readr::col_character(),
+                             "Reads"         = readr::col_integer(),
+                             "Perfect Index" = readr::col_integer(),
+                             "One Mismatch"  = readr::col_integer(),
+                             "Two Mismatch"  = readr::col_integer())
+  )
+  
+  types <- merge_sheets("reaction2library", "library_sheet", config = config) |>
+    select(-c("library_id"))
+  undetermined <- data.frame("reaction_id"  = "Undetermined",
+                             "library_type" = "Unknown",
+                             "index"        = "Undetermined")
+  types <- rbind(types, undetermined)
+  demux_stats <- merge.data.frame(types, reads, by = "index")
+  demux_stats
+}
+
+plot_demux_stats <- function(demux_stats) {
+  
+  plot_data <- demux_stats |>
+    dplyr::select(-c("Reads")) |>
+    tidyr::pivot_longer(cols = c("Perfect Index", 
+                                 "One Mismatch", 
+                                 "Two Mismatch")) |>
+    dplyr::mutate(name = factor(name, levels = c("Two Mismatch", 
+                                                 "One Mismatch", 
+                                                 "Perfect Index"))) |>
+    dplyr::mutate(index = ifelse(index == "Undetermined", "", index)) |>
+    dplyr::filter(value > 0)
+  
+  # We want 10x/RNA and HTO in the beginning and Unknown in the end.
+  # Other types may come in the future.
+  order <- factor(unique(plot_data[["library_type"]]))
+  order <- relevel(order, "Unknown")
+  levels(order) <- rev(levels(order))
+  for (i in c("hto", "HTO", "10x", "RNA")) {
+    if (i %in% levels(order)) {
+      order <- relevel(order, i)
+    }
+  }
+  
+  plot_data[["library_type"]] <- factor(plot_data[["library_type"]],
+                                        levels = levels(order),
+                                        ordered = TRUE)
+  
+  cols <- softPallet(3)
+  
+  fill_scale <- scale_fill_manual(
+    name = element_blank(),
+    values = c(
+      "Perfect Index" = cols[1], 
+      "One Mismatch"  = cols[2], 
+      "Two Mismatch"  = cols[3]
+    ),
+    breaks = c(
+      "Perfect Index", "One Mismatch", "Two Mismatch"
+    ),
+    drop = TRUE)
+  
+  ggplot(plot_data, aes(x = reaction_id, y = value, fill = name)) +
+    geom_bar(position = position_stack(), stat = "identity") +
+    coord_flip() +
+    geom_text(y = 0, mapping = aes(label = index), colour = "black", hjust = 0) +
+    scale_y_continuous(name = "Reads", labels = exponent_format()) +
+    xlab("Reaction ID") +
+    facet_grid(library_type ~ Lane, scales = "free_y", space = "free_y") +
+    fill_scale +
+    theme_comuneqaid() +
+    theme(legend.position = 'bottom')
+}

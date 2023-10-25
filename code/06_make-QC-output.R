@@ -131,8 +131,8 @@ for (seq.id in seq.sheet[["sequencing_id"]]) {
          height = 4,
          dpi = 'retina')
   
-  df.read.demultiplexing <- read.csv(file.path(fastq.stats.path,'read-demultiplexing.csv'))
-  p.read.demultiplexing <- make_plot_bclDistribution(df.read.demultiplexing)
+  df.read.demultiplexing <- read_csv(file.path(fastq.stats.path,'read-demultiplexing.csv'))
+  p.read.demultiplexing <- plot_demux_stats(df.read.demultiplexing)
   
   cat('#\t..\t\t- \"00_read-index-distribution.png\"\n')
   ggsave(filename = paste0('00_read-index-distribution.png'),

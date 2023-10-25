@@ -106,26 +106,17 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
   cat(paste0('#\t..\timporting demultiplexing stats..\n'),
       sep = '')
   
-  demult.stats.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Demultiplex_Stats.csv')
-  read.tib <- read_csv(demult.stats.path,
-                           col_select = c(index = 'SampleID', reads = '# Reads'),
-                           col_types = c('c','d')) %>%
-    group_by(index) %>%
-    summarise(reads = sum(reads)) %>% 
-    mutate(bcl_folder = bcl,
-           class = case_when(str_detect(index, '^SI-TT-') ~ '10x',
-                             str_detect(index, '^D7') ~ 'HTO',
-                             TRUE ~ 'Undetermined'))
-  
-  write.table(x = read.tib,
+  demult.stats.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports')
+  read.tib <- demux_counts(demult.stats.path)
+  write_csv(x = read.tib,
               file = file.path(fastq.stats.path,'read-demultiplexing.csv'),
-              sep = ',',
-              row.names = F)
+              quote = "needed"
+              )
   
   cat(paste0('#\t..\timporting unknown barcode stats..\n',
              '#\t..\n'),
       sep = '')
-  unknown.barcodes.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Top_Unknown_Barcodes.csv')
+  unknown.barcodes.path <- file.path(demult.stats.path,'Top_Unknown_Barcodes.csv')
   unknown.barcodes.tib <- read_csv(unknown.barcodes.path,
                                    col_select = c(lane = 'Lane', index = index, index2 = index2, reads = '# Reads'),
                                    col_types = c('c','c','c','d')) %>%

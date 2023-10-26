@@ -87,28 +87,7 @@ merge_sheets <- function(..., config = snakemake@config) {
 #' @export
 #'
 #' @examples
-demux_counts <- function(stats_folder) {
-  demult_stats <- file.path(stats_folder, "Demultiplex_Stats.csv")
-  if (!file.exists(demult_stats)) {
-    stop(demult_stats, " does not exist.")
-  }
-  reads <- readr::read_csv(demult_stats, 
-                           col_select = c("index" = "SampleID", 
-                                          "reads" = "# Reads"), 
-                           col_types = c("index" = readr::col_character(), 
-                                         "reads" = readr::col_integer())) |>
-    dplyr::group_by(index) |>
-    dplyr::summarise(reads = sum(reads))
-  
-  types <- merge_sheets("reaction2library", "library_sheet", config = config) |>
-    select(-c("library_id", "reaction_id"))
-  types <- rbind(types, c("Undetermined", "Undetermined"))
-  demux_stats <- merge.data.frame(types, reads)
-  demux_stats
-}
-
-
-demux_counts <- function(stats_folder) {
+demux_stats <- function(stats_folder) {
   stats_file <- file.path(stats_folder, "Demultiplex_Stats.csv")
   if (!file.exists(stats_file)) {
     stop(stats_file, " does not exist.")
@@ -141,10 +120,17 @@ demux_counts <- function(stats_folder) {
   demux_stats
 }
 
-demux_stats <- demux_counts(stats_folder)
-plot_demux_stats <- function(demux_stats) {
-  
-  plot_data <- demux_stats |>
+
+#' Plot demultiplexing stats
+#'
+#' @param demux_table output from demux_stats()
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_demux_stats <- function(demux_table) {
+  plot_data <- demux_table |>
     dplyr::select(-c("Reads")) |>
     tidyr::pivot_longer(cols = c("Perfect Index", 
                                  "One Mismatch", 
@@ -172,8 +158,8 @@ plot_demux_stats <- function(demux_stats) {
   
   cols <- softPallet(3)
   
-  fill_scale <- scale_fill_manual(
-    name = element_blank(),
+  fill_scale <- ggplot2::scale_fill_manual(
+    name = ggplot2::element_blank(),
     values = c(
       "Perfect Index" = cols[1], 
       "One Mismatch"  = cols[2], 
@@ -184,16 +170,22 @@ plot_demux_stats <- function(demux_stats) {
     ),
     drop = TRUE)
   
-  ggplot(plot_data, aes(x = reaction_id, y = value, fill = name)) +
-    geom_bar(position = position_stack(), stat = "identity") +
-    coord_flip() +
-    geom_text(y = 0, mapping = aes(label = index), colour = "black", hjust = 0) +
-    scale_y_continuous(name = "Reads", labels = exponent_format()) +
-    xlab("Reaction ID") +
-    facet_grid(library_type ~ Lane, scales = "free_y", space = "free_y") +
+  ggplot2::ggplot(plot_data, 
+                  ggplot2::aes(x = reaction_id, y = value, fill = name)) +
+    ggplot2::geom_bar(position = position_stack(), stat = "identity") +
+    ggplot2::coord_flip() +
+    ggplot2::geom_text(y = 0, 
+                       mapping = ggplot2::aes(label = index), 
+                       colour = "black", 
+                       hjust = 0) +
+    ggplot2::scale_y_continuous(name = "Reads", labels = exponent_format()) +
+    ggplot2::xlab("Reaction ID") +
+    ggplot2::facet_grid(library_type ~ Lane, 
+                        scales = "free_y", 
+                        space = "free_y") +
     fill_scale +
     theme_comuneqaid() +
-    theme(legend.position = 'bottom')
+    ggplot2::theme(legend.position = 'bottom')
 }
 
 
@@ -236,6 +228,15 @@ exponent_format <- function() {
 }
 
 
+#' Common theme for COMUNEQAID
+#'
+#' @param base_size numeric, base size
+#' @param base_family string, text family
+#'
+#' @return
+#' @export
+#'
+#' @examples
 theme_comuneqaid <- function(base_size = 10, base_family = "Helvetica") {
   theme_bw(base_size = base_size, base_family = base_family) 
 }

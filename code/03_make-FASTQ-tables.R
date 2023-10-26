@@ -120,6 +120,9 @@ for (bcl in sequencing_sheet[["bcl_folder"]]) {
   types <- rbind(types, c("Undetermined", "Undetermined"))
   merge.data.frame(types, reads)
   
+  
+  stats_folder <- file.path(project_path(),'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports')
+  
   demult.stats.path <- file.path(project_path(),'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports','Demultiplex_Stats.csv')
   read.tib <- read_csv(demult.stats.path,
                            col_select = c(index = 'SampleID', reads = '# Reads'),

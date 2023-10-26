@@ -41,10 +41,10 @@ get_software_version <- function(software) {
   return(paste0(software_name, "_", version))
 }
 
-bcl.convert.version <- get_software_version('bcl-convert')
-salmon.version = get_software_version('salmon')
-alevin.fry.version = get_software_version('alevin-fry')
-salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
+# bcl.convert.version <- get_software_version('bcl-convert')
+# salmon.version = get_software_version('salmon')
+# alevin.fry.version = get_software_version('alevin-fry')
+# salmon.version.alevin.fry.version <- paste0(salmon.version, '_', alevin.fry.version)
 
 
 # Data processing

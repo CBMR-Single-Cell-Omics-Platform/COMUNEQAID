@@ -171,15 +171,14 @@ plot_demux_stats <- function(demux_table) {
     drop = TRUE)
   
   ggplot2::ggplot(plot_data, 
-                  ggplot2::aes(x = reaction_id, y = value, fill = name)) +
+                  ggplot2::aes(x = value, y = reaction_id, fill = name)) +
     ggplot2::geom_bar(position = position_stack(), stat = "identity") +
-    ggplot2::coord_flip() +
-    ggplot2::geom_text(y = 0, 
+    ggplot2::geom_text(x = 0, 
                        mapping = ggplot2::aes(label = index), 
                        colour = "black", 
                        hjust = 0) +
-    ggplot2::scale_y_continuous(name = "Reads", labels = exponent_format()) +
-    ggplot2::xlab("Reaction ID") +
+    ggplot2::scale_x_continuous(name = "Reads", labels = exponent_format()) +
+    ggplot2::ylab("Reaction ID") +
     ggplot2::facet_grid(library_type ~ Lane, 
                         scales = "free_y", 
                         space = "free_y") +
@@ -197,23 +196,25 @@ plot_demux_stats <- function(demux_table) {
 #' @export
 #'
 #' @examples
-unknown_barcodes <- function(stats_folder) {
+unknown_barcodes <- function(stats_folder, n = 10) {
   barcodes_file <- file.path(stats_folder, "Top_Unknown_Barcodes.csv")
   if (!file.exists(barcodes_file)) {
     stop(barcodes_file, " does not exist.")
   }
   
-  read_csv(barcodes_file,
-           col_select = c("index"  = "index", 
-                          "index2" = "index2", 
-                          "reads"  = '# Reads'),
-           col_types = c("index"  = readr::col_character(), 
-                         "index2" = readr::col_character(), 
-                         "reads"  = readr::col_integer())) |>
-    group_by(index, index2) |> 
-    summarise("reads" = sum(reads), .groups = "keep") |> 
-    arrange(desc(reads))
+  # Use starts_with to handle cases where only one index is used.
+  readsr::read_csv(barcodes_file,
+                   col_select = c("Lane" = "Lane",
+                                  tidyselect::starts_with("index"), 
+                                  "reads"  = '# Reads'),
+                   col_types = c("index"  = readr::col_character(), 
+                                 "index2" = readr::col_character(), 
+                                 "reads"  = readr::col_integer())) |>
+    dplyr::group_by(Lane) |>
+    dplyr::slice_max(reads, n = n)
 }
+
+
 
 #' Exponent format
 #'

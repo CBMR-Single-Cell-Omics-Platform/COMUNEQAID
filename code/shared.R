@@ -1431,3 +1431,20 @@ plot_demux_stats <- function(demux_stats) {
     theme_comuneqaid() +
     theme(legend.position = 'bottom')
 }
+
+theme_comuneqaid <- function(base_size = 10, base_family = "Helvetica") {
+  theme_bw(base_size = base_size, base_family = base_family) 
+}
+
+merge_sheets <- function(..., config = snakemake@config) {
+  table_names <- unlist(list(...))
+  
+  # Tables need to be present in config
+  present <- table_names %in% names(config)
+  if (!all(present)) {
+    stop(paste0(table_names[!present], collapse = ", "), " not in config")
+  }
+  
+  reduce(.x = config[table_names],
+         .f = merge.data.frame)
+}

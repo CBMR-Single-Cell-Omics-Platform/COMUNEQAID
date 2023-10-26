@@ -1345,7 +1345,7 @@ make_plot_umap_class <- function(meta.data, rnx.name) {
 # Data
 bc.df.ref <- read.csv('data/bc-df-ref.csv')
 
-demux_counts <- function(stats_folder) {
+demux_counts <- function(stats_folder, config = snakemake@config) {
   stats_file <- file.path(stats_folder, "Demultiplex_Stats.csv")
   if (!file.exists(stats_file)) {
     stop(stats_file, " does not exist.")

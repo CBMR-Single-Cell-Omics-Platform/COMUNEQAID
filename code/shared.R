@@ -1345,7 +1345,9 @@ make_plot_umap_class <- function(meta.data, rnx.name) {
 # Data
 bc.df.ref <- read.csv('data/bc-df-ref.csv')
 
-demux_counts <- function(stats_folder, config = snakemake@config) {
+demux_counts <- function(stats_folder, 
+                         this_sequencing_id,
+                         config = snakemake@config) {
   stats_file <- file.path(stats_folder, "Demultiplex_Stats.csv")
   if (!file.exists(stats_file)) {
     stop(stats_file, " does not exist.")
@@ -1368,8 +1370,11 @@ demux_counts <- function(stats_folder, config = snakemake@config) {
                              "Two Mismatch"  = readr::col_integer())
   )
   
-  types <- merge_sheets("reaction2library", "library_sheet", config = config) |>
-    select(-c("library_id"))
+  types <- merge_sheets("reaction2library", "library_sheet", 
+                        "library2sequencing", "sequencing_sheet", 
+                        config = config) |>
+    dplyr::filter(sequencing_id == this_sequencing_id) |>
+    dplyr::select(c("reaction_id", "library_type", "index"))
   undetermined <- data.frame("reaction_id"  = "Undetermined",
                              "library_type" = "Unknown",
                              "index"        = "Undetermined")

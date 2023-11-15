@@ -107,7 +107,7 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
       sep = '')
   
   demult.stats.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports')
-  read.tib <- demux_counts(demult.stats.path)
+  read.tib <- demux_counts(demult.stats.path, this_sequencing_id = sequencing_id)
   write_csv(x = read.tib,
               file = file.path(fastq.stats.path,'read-demultiplexing.csv'),
               quote = "needed"

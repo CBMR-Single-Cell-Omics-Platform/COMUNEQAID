@@ -14,7 +14,6 @@ from shared import (
 current_time = datetime.now()
 date_and_time = current_time.strftime('%Y-%m-%d_%H-%M-%S')
 date_and_time_pretty = current_time.strftime('%Y-%m-%d %H:%M:%S')
-
 bcl_convert_version = get_software_version('bcl-convert')
 
 def main():

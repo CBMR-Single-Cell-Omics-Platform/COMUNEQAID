@@ -54,7 +54,7 @@ load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, out
   meta_info = rjson::fromJSON(file = file.path(frydir, 'quant.json'))
   ng = meta_info[['num_genes']]
   usa_mode = meta_info[['usa_mode']]
-  
+
   if (usa_mode) {
     if (length(which_counts) == 0) {
       stop('Please at least provide one status in \'U\' \'S\' \'A\' ')
@@ -62,28 +62,28 @@ load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, out
     if (verbose) {
       #message('processing input in USA mode, will return ', paste(which_counts, collapse = '+'))
       cat('#\t..\t\t','processing input in USA mode, will return ', paste(which_counts,collapse = '+'),'..\n',sep = '')
-      
+
     }
   } else if (verbose) {
     #message('processing input in standard mode, will return spliced count')
     cat('#\t..\t\tprocessing input in standard mode, will return spliced count..\n')
   }
-  
+
   # read in count matrix
   cat('#\t..\t\tread in count matrix..\n')
   af_raw = readMM(file = file.path(frydir, 'alevin', 'quants_mat.mtx'))
-  
+
   # if usa mode, each gene gets 3 rows, so ng/3
   if (usa_mode) {
     ng = as.integer(ng/3)
   }
-  
+
   # read in gene name file and cell barcode file
   cat('#\t..\t\tread in gene name file..\n')
   afg = read.csv(file.path(frydir, 'alevin', 'quants_mat_cols.txt'), strip.white = TRUE, header = FALSE, nrows = ng, col.names = c('gene_ids'))
   cat('#\t..\t\tread in cell barcode file..\n')
   afc = read.csv(file.path(frydir, 'alevin', 'quants_mat_rows.txt'), strip.white = TRUE, header = FALSE, col.names = c('barcodes'))
-  
+
   # if in usa_mode, sum up counts in different status according to which_counts
   if (output_list) {
     which_counts = c('U','S','A')
@@ -97,11 +97,11 @@ load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, out
     } else {
       o = af_raw
     }
-    
+
     res.rna <- t(o)
     colnames(res.rna) <- afc[['barcodes']]
     rownames(res.rna) <- afg[['gene_ids']]
-    
+
     which_counts = c('S','A')
     if (usa_mode) {
       rd = list('S' = seq(1, ng), 'U' =  seq(ng + 1, 2*ng), 'A' =  seq(2*ng + 1, 3*ng))
@@ -112,11 +112,11 @@ load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, out
     } else {
       o = af_raw
     }
-    
+
     res.spl <- t(o)
     colnames(res.spl) <- afc[['barcodes']]
     rownames(res.spl) <- afg[['gene_ids']]
-    
+
     which_counts = c('U')
     if (usa_mode) {
       rd = list('S' = seq(1, ng), 'U' =  seq(ng + 1, 2*ng), 'A' =  seq(2*ng + 1, 3*ng))
@@ -127,11 +127,11 @@ load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, out
     } else {
       o = af_raw
     }
-    
+
     res.uns <- t(o)
     colnames(res.uns) <- afc[['barcodes']]
     rownames(res.uns) <- afg[['gene_ids']]
-    
+
     return(list('RNA' = res.rna,
                 'spliced' = res.spl,
                 'unspliced' = res.uns))
@@ -148,43 +148,43 @@ load_fry <- function(frydir, which_counts = c('U','S','A'), verbose = FALSE, out
     res.counts <- t(o)
     colnames(res.counts) <- afc[['barcodes']]
     rownames(res.counts) <- afg[['gene_ids']]
-    
+
     cat('#\t..\n')
     return(res.counts)
   }
 }
 
 call_droplets <- function(counts, protocol, cutoff) {
-  
+
   if(cutoff == 'auto') {
     skip.mod <- F
     force.mod <- F
   }
-  
+
   if(cutoff == 'correct') {
     skip.mod <- F
     force.mod <- T
   }
-  
+
   if(cutoff == 'skip') {
     skip.mod <- T
     force.mod <- F
   }
-  
+
   cat('#\t..\tcalling ',protocol,'..\n',
       sep = '')
-  
+
   if (protocol == 'cells') {
     bc.calls <- barcodeRanks(counts)
   }
   if (protocol == 'nuclei') {
     bc.calls <- barcodeRanks(counts[['RNA']])
   }
-  
+
   bc.df <- get_knee_df(counts = counts,
                        inflection = metadata(bc.calls)[['inflection']],
                        protocol = protocol)
-  
+
   bc.annot <- tibble(Knee = metadata(bc.calls)[['knee']],
                      Inflection = metadata(bc.calls)[['inflection']],
                      Above_knee = max(bc.df[['Rank']][bc.df[['nUMI_RNA']] > Knee]),
@@ -196,12 +196,12 @@ call_droplets <- function(counts, protocol, cutoff) {
                      Manual.thresh = NA,
                      Knee.manual = NA,
                      Inflection.manual = NA)
-  
+
   bcs.knee <- bc.df[['Barcode']][bc.df[['nUMI_RNA']] > bc.annot[['Knee']]]
   valid.bcs <- bc.df[['Barcode']][bc.df[['nUMI_RNA']] > bc.annot[['Inflection']]]
   cat('#\t..\t\t ',protocol,':\t',length(valid.bcs),'\n',
       sep = '')
-  
+
   cat('#\t..\n',
       '#\t..\ttesting for bimodality..\n',
       sep = '')
@@ -209,7 +209,7 @@ call_droplets <- function(counts, protocol, cutoff) {
   cat('#\t..\t\tp-value = ',dip[['p.value']],'\n',
       '#\t..\t\tforce.mod = ',force.mod,'\n',
       sep = '')
-  
+
   if (skip.mod == F) {
     if (dip[['p.value']] < 0.05 || force.mod == T) {
       cat('#\t..\n',
@@ -226,7 +226,7 @@ call_droplets <- function(counts, protocol, cutoff) {
       cat('#\t..\n',
           '#\t..\tcalling ',protocol,' again (only mod2-BCs)..\n',
           sep = '')
-      
+
       if (protocol == 'cells') {
         bc.calls.modal <- barcodeRanks(counts[,valid.bcs])
       }
@@ -236,23 +236,23 @@ call_droplets <- function(counts, protocol, cutoff) {
       bc.df <- get_knee_df(counts = counts,
                            inflection = metadata(bc.calls.modal)[['inflection']],
                            protocol = protocol)
-      
+
       bc.annot[['Multimodal']] <- T
       bc.annot[['Knee.upd']] <- metadata(bc.calls.modal)[['knee']]
       bc.annot[['Inflection.upd']] <- metadata(bc.calls.modal)[['inflection']]
       bc.annot[['Rank_cutoff']] <- max(bc.df[['Rank']][bc.df[['nUMI_RNA']] > bc.annot[['Inflection.upd']]])
-      
+
       valid.bcs <- bc.df[['Barcode']][bc.df[['nUMI_RNA']] > bc.annot[['Inflection.upd']]]
       cat('#\t..\t\t',protocol,':\t\t',length(valid.bcs),'\n',
           sep = '')
     }
   }
-  
+
   if (is.numeric(cutoff)) {
     cat('#\t..\n',
         '#\t..\tcalling ',protocol,' again with lower bound = ',cutoff,'..\n',
         sep = '')
-    
+
     if (protocol == 'cells') {
       bc.calls.manual <- barcodeRanks(counts, lower = cutoff)
     }
@@ -262,13 +262,13 @@ call_droplets <- function(counts, protocol, cutoff) {
     bc.df <- get_knee_df(counts = counts,
                          inflection = metadata(bc.calls.manual)[['inflection']],
                          protocol = protocol)
-    
+
     bc.annot[['Manual']] <- T
     bc.annot[['Manual.thresh']] <- cutoff
     bc.annot[['Knee.manual']] <- metadata(bc.calls.manual)[['knee']]
     bc.annot[['Inflection.manual']] <- metadata(bc.calls.manual)[['inflection']]
     bc.annot[['Rank_cutoff']] <- max(bc.df[['Rank']][bc.df[['nUMI_RNA']] > bc.annot[['Inflection.manual']]])
-    
+
     valid.bcs <- bc.df[['Barcode']][bc.df[['nUMI_RNA']] > bc.annot[['Inflection.manual']]]
     cat('#\t..\t\t',protocol,':\t\t',length(valid.bcs),'\n',
         sep = '')
@@ -279,7 +279,7 @@ call_droplets <- function(counts, protocol, cutoff) {
 HTODemux.mcl <- function(object, assay = "HTO", q_l = 1, q_h = 0.005, seed = 42){
   # A function to find the threshold for each hastag, the P, and singlet, doublets and negative.
   # The input is the HTO data matrix (normalized across cells).
-  
+
   assay <- assay %||% DefaultAssay(object = object)
   data <- GetAssayData(object = object, assay = assay, slot = 'data')
   hto.cutoff.metadata = data.frame(cut_off = future.apply::future_apply(data,1,function(x) select_hash_cutoff_mcl(x, q_l = q_l, q_h = q_h), future.seed = T))
@@ -339,14 +339,14 @@ process_seur <- function(seur, n.pca.dims = 50, assay = 'RNA', verbose = F) {
                      reduction.key = 'htoPC_',
                      approx=FALSE,
                      verbose = verbose)
-      
+
       cat('#\t..\t\trunning tSNE..\n')
       seur <- RunTSNE(seur,
                       distance.matrix = as.matrix(dist(t(GetAssayData(object = seur, assay = 'HTO')))),
                       reduction.name = 'hto.tsne',
                       reduction.key = 'htotSNE_',
                       verbose = verbose)
-      
+
       cat('#\t..\t\trunning UMAP..\n')
       seur <- RunUMAP(seur,
                       reduction = "hto.pca",
@@ -361,20 +361,20 @@ process_seur <- function(seur, n.pca.dims = 50, assay = 'RNA', verbose = F) {
 }
 
 dub_cutoff <- function(x) {
-  
+
   # calculate number of neighbors at each proportion that are doublets
-  data.frame("proportion" = x$RNA_doubletNeighborProportion) %>% 
-    group_by(proportion) %>% 
-    summarize(n_cells = n()) %>% 
-    mutate(pct_cells = n_cells / sum(n_cells)) -> data 
-  
-  
-  # find point at which we gain very few doublets as proportion increases 
+  data.frame("proportion" = x$RNA_doubletNeighborProportion) %>%
+    group_by(proportion) %>%
+    summarize(n_cells = n()) %>%
+    mutate(pct_cells = n_cells / sum(n_cells)) -> data
+
+
+  # find point at which we gain very few doublets as proportion increases
   cut <- data$proportion[PCAtools::findElbowPoint(variance = sort(data$n_cells, decreasing = T)) + 1]
   vec <- if_else(x$RNA_doubletNeighborProportion <= cut, F, T)
-  
+
   data[['cut']] <- cut
-  
+
   cat('#\t..\n',
       '#\t..\twriting metadata..\n',
       sep = '')
@@ -383,9 +383,9 @@ dub_cutoff <- function(x) {
               file = file.path(mat.stats.path,'rna_doublet_neighbor_proportion_metadata.csv'),
               sep = ',',
               row.names = F)
-  
+
   return(vec)
-  
+
 }
 
 # Helper functions
@@ -405,7 +405,7 @@ get_knee_df <- function(counts, inflection, protocol) {
     mat.rna <- counts[['RNA']]
     mat.spl <- counts[['spliced']]
     mat.uns <- counts[['unspliced']]
-    
+
     tibble(Barcode = colnames(mat.rna),
            nUMI_RNA = Matrix::colSums(mat.rna),
            nUMI_spliced = Matrix::colSums(mat.spl),
@@ -435,7 +435,7 @@ select_hash_cutoff_mcl <- function(x, q_l = 1, q_h = 0.01, seed = 42) {
   cl_center = km$parameters$mean
   high_cl <- which(cl_center == max(cl_center))
   low_cl <- which(cl_center != max(cl_center))
-  # q_l and q_h are the quantiles for negative and postive cluster, respectively. 
+  # q_l and q_h are the quantiles for negative and postive cluster, respectively.
   cutoff <- max(quantile(x[cl == low_cl], q_l), quantile(x[cl == high_cl], q_h))
   # The higher the cut off, the less false positive (the more false negative).
   return(cutoff)
@@ -472,7 +472,7 @@ HTO_classifcation = function(discrete, hto_mcl.p, assay){
   hash.secondID <- as.character(donor.id[apply(X = hto_mcl.p, MARGIN = 2, FUN = function(x) order(x,decreasing = T)[2])])
   hash.margin <- hash.max - hash.second
   doublet_id <- sapply(X = 1:length(x = hash.maxID), FUN = function(x) {
-    return(paste(sort(x = c(hash.maxID[x], hash.secondID[x])), 
+    return(paste(sort(x = c(hash.maxID[x], hash.secondID[x])),
                  collapse = "_"))
   })
   classification <- classification.global
@@ -485,20 +485,20 @@ HTO_classifcation = function(discrete, hto_mcl.p, assay){
 }
 
 catHeader <- function(text = "", level = 3) {
-  
+
   cat(paste0("\n\n",
              paste(rep("#", level), collapse = ""),
              " ", text, "\n"))
 }
 
 catHeader_w_tabset <- function(text = "", level = 3) {
-  
+
   cat(paste0("\n\n",
              paste(rep("#", level), collapse = ""),
              " ", text, " {.tabset}","\n"))
 }
 
-# Visualization 
+# Visualization
 plotting.font <- 'Helvetica'
 base.size = 10
 
@@ -523,169 +523,166 @@ exponent_format <- function() {
 }
 
 make_summary_table <- function(){
-  
+
   stat.tib.10x <- tibble(
     # Raw - reads from fastqs
     'Cells (Loaded)' = double(),
     'Reads (Raw)' = double(),
-    
+
     # Called cells - (Barcode ranks)
     'Cells (Called)' = double(),  'Cells % Loaded (Called)' = character(),
     'Reads (Called)' = double(),  'Reads % Raw (Called)' = character(), 'Reads/Cell (Called)' = double(),
     'UMIs (Called)' = double(), 'UMIs/Cell (Called)' = double(),
-    
+
     # Called singlets (inter-HTO)
     'Cells (inter-HTO)' = double(),  'Cells % Called (inter-HTO)' = character(),
     'Reads (inter-HTO)' = double(),  'Reads % Called (inter-HTO)' = character(), 'Reads/Cell (inter-HTO)' = double(),
     'UMIs (inter-HTO)' = double(), 'UMIs/Cell (inter-HTO)' = double(),
-    
+
     # Called singlets (intra-HTO)
     'Cells (intra-HTO)' = double(),  'Cells % inter-HTO (intra-HTO)' = character(),
     'Reads (intra-HTO)' = double(),  'Reads % inter-HTO (intra-HTO)' = character(), 'Reads/Cell (intra-HTO)' = double(),
     'UMIs (intra-HTO)' = double(), 'UMIs/Cell (intra-HTO)' = double()
   )
-  
+
   for (rnx.i in rnx.sheet[["reaction_id"]]) {
-    
+
     rnx.tib <- filter(rnx.sheet, reaction_id == rnx.i)
-    
+
     q.rnx <- rnx.tib[['reaction_id']]
     q.protocol <- rnx.tib[['seq_type']]
     q.cutoff <- rnx.tib[['cutoff']]
     q.organism <- rnx.tib[['align']]
-    
+
     lib.tib <- filter(rnxsheet.rnx2lib,
                       reaction_id == q.rnx)
     rnx.omnisheet <- filter(omnisheet, reaction_id == q.rnx)
-    
+
     q.index.10x <- rnx.omnisheet %>%
-      filter(library_type == '10x') %>% 
-      select(index) %>% 
-      unique() %>% 
+      filter(library_type == '10x') %>%
+      select(index) %>%
+      unique() %>%
       unlist()
-    
+
     q.bcl <- rnx.omnisheet %>%
-      select(bcl_folder) %>% 
-      unique() %>% 
+      select(bcl_folder) %>%
+      unique() %>%
       unlist()
-    
-    q.loaded <- rnx.omnisheet %>% 
-      filter(library_type == '10x') %>% 
-      group_by(reaction_id) %>% 
-      summarise(loaded_cells_rnx = sum(loaded_cells)) %>% 
-      filter(reaction_id == q.rnx) %>% 
-      select(loaded_cells_rnx) %>% 
+
+    q.loaded <- rnx.omnisheet %>%
+      filter(library_type == '10x') %>%
+      group_by(reaction_id) %>%
+      summarise(loaded_cells_rnx = sum(loaded_cells)) %>%
+      filter(reaction_id == q.rnx) %>%
+      select(loaded_cells_rnx) %>%
       unlist()
-    
-    q.lib.10x <- lib.tib %>% 
-      filter(library_type == '10x') %>% 
-      select(library_id) %>% 
+
+    q.lib.10x <- lib.tib %>%
+      filter(library_type == '10x') %>%
+      select(library_id) %>%
       unlist()
-    
+
     demult.stats.path <- file.path(
       project.path,
       'scRNAseq',
       'dry-lab',
       'FASTQ',
       q.bcl,
-      bcl.convert.version,
-      'Reports')
-    
+      'metadata')
+
     demultiplex.stats <- read_csv(file.path(demult.stats.path,
-                                            'Demultiplex_Stats.csv'))
-    
+                                            'read-demultiplexing.csv'))
+
     q.reads <- demultiplex.stats %>%
-      group_by(SampleID) %>% 
-      summarise(total_reads = sum(`# Reads`)) %>%
-      filter(SampleID == q.index.10x) %>% 
-      select(total_reads) %>% 
+      filter(index == q.index.10x) %>%
+      select(reads) %>%
       unlist()
-    
+
     mat.stats.path <- file.path(
       project.path,
       snakemake@config[['out_path']],
       snakemake@config[['com_id']],
       'metadata',
       q.rnx)
-    
+
     # Init
     stats.10x <- list()
-    
+
     # Collect barcode ranks data
     bc.df <- read.csv(file.path(mat.stats.path,'rna_cell-barcode_stats.csv'))
     valid.cbs <- bc.df[['Barcode']][bc.df[['State']] == 'Called']
-    
+
     # Read featureDump.txt
     #mat.files.10x <- file.path(dir.proj,'scRNAseq','03_PipelineOut',com.ID,'10x',pool.10x,'res')
     mat.files.10x <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,q.rnx,q.lib.10x,'res')
     feature.dump.10x <- suppressMessages(read_delim(file.path(mat.files.10x,'featureDump.txt'), delim = '\t'))
-    
+
     stats.10x[['Reads (Raw)']] <- q.reads
     stats.10x[['Cells (Loaded)']] <- q.loaded
-    
+
     # CALLED CELLS - BARCODE RANKS
     # 10x
     stats.10x[['Cells (Called)']] <- length(unique(feature.dump.10x[feature.dump.10x[['CB']] %in% valid.cbs,][['CB']]))
     stats.10x[['Cells % Loaded (Called)']] <- paste(as.character(round(stats.10x[['Cells (Called)']] / stats.10x[['Cells (Loaded)']] * 100, 1)),'%')
-    
+
     stats.10x[['Reads (Called)']] <- sum(feature.dump.10x[feature.dump.10x[['CB']] %in% valid.cbs,][['MappedReads']])
     stats.10x[['Reads % Raw (Called)']] <- paste(as.character(round(stats.10x[['Reads (Called)']] / stats.10x[['Reads (Raw)']] * 100, 1)),'%')
     stats.10x[['Reads/Cell (Called)']] <- round(median(feature.dump.10x[feature.dump.10x[['CB']] %in% valid.cbs,][['MappedReads']]))
-    
+
     stats.10x[['UMIs (Called)']] <- round(sum(feature.dump.10x[feature.dump.10x[['CB']] %in% valid.cbs,][['DeduplicatedReads']]))
     stats.10x[['UMIs/Cell (Called)']] <- round(median(feature.dump.10x[feature.dump.10x[['CB']] %in% valid.cbs,][['DeduplicatedReads']]))
-    
+
     if ('hto' %in% lib.tib[['library_type']]) {
-      
+
       # CALLED SINGLETS (INTER-HTO)
       meta.data <- read.csv(file.path(mat.stats.path,'seurat_unfiltered_metadata.csv'))
       cells.negat.inter <- rownames(meta.data[meta.data[['HTO_globalClass']] == 'Negative',])
       cells.doubl.inter <- rownames(meta.data[meta.data[['HTO_globalClass']] == 'Doublet',])
       cells.singl.inter <- rownames(meta.data[meta.data[['HTO_globalClass']] == 'Singlet',])
-      
+
       # 10x
       stats.10x[['Cells (inter-HTO)']] <- length(unique(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.inter,][['CB']]))
       stats.10x[['Cells % Called (inter-HTO)']] <- paste(as.character(round(stats.10x[['Cells (inter-HTO)']] / stats.10x[['Cells (Called)']] * 100, 1)),'%')
-      
+
       stats.10x[['Reads (inter-HTO)']] <- sum(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.inter,][['MappedReads']])
       stats.10x[['Reads % Called (inter-HTO)']] <- paste(as.character(round(stats.10x[['Reads (inter-HTO)']] / stats.10x[['Reads (Called)']] * 100, 1)),'%')
       stats.10x[['Reads/Cell (inter-HTO)']] <- round(median(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.inter,][['MappedReads']]))
-      
+
       stats.10x[['UMIs (inter-HTO)']] <- round(sum(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.inter,][['DeduplicatedReads']]))
       stats.10x[['UMIs/Cell (inter-HTO)']] <- round(median(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.inter,][['DeduplicatedReads']]))
-      
+
       # CALLED SINGLETS (INTRA-HTO)
       cells.singl.intra <- rownames(meta.data[meta.data[['HTO_globalClass']] == 'Singlet' & meta.data[['RNA_doubletNeighborBool']] == F,])
-      
+
       stats.10x[['Cells (intra-HTO)']] <- length(unique(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.intra,][['CB']]))
       stats.10x[['Cells % inter-HTO (intra-HTO)']] <- paste(as.character(round(stats.10x[['Cells (intra-HTO)']] / stats.10x[['Cells (inter-HTO)']] * 100, 1)),'%')
-      
+
       stats.10x[['Reads (intra-HTO)']] <- sum(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.intra,][['MappedReads']])
       stats.10x[['Reads % inter-HTO (intra-HTO)']] <- paste(as.character(round(stats.10x[['Reads (intra-HTO)']] / stats.10x[['Reads (inter-HTO)']] * 100, 1)),'%')
       stats.10x[['Reads/Cell (intra-HTO)']] <- round(median(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.intra,][['MappedReads']]))
-      
+
       stats.10x[['UMIs (intra-HTO)']] <- round(sum(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.intra,][['DeduplicatedReads']]))
       stats.10x[['UMIs/Cell (intra-HTO)']] <- round(median(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.intra,][['DeduplicatedReads']]))
     }
     # Bind to collective df
     stat.tib.10x <- bind_rows(stat.tib.10x,stats.10x)
   }
-  
+
   stat.df.10x <- as.data.frame(stat.tib.10x)
   rownames(stat.df.10x) <- rnx.sheet[['reaction_id']]
-  
+
   stat.df.10x %>%
     kbl(escape = F, col.names = c('','',
                                   'remaining','% loaded','remaining','% sequenced','per cell','remaining','per cell',
                                   'remaining','% called','remaining','% called','per cell','remaining','per cell',
                                   'remaining','% singlets','remaining','% singlets','per cell','remaining','per cell'),
         format.args = list(big.mark = ','),align = rep('c',25),
-        booktabs = T) %>% 
+        booktabs = T) %>%
     row_spec(0, color = '#dedede', angle = 25, align = 'center', font_size = '12') %>%
     kable_material_dark(full_width = F, html_font = 'helvetica', lightable_options = 'basic') %>%
-    column_spec(1, bold = T, color = '#dedede') %>% 
-    column_spec(column = c(4,5,6,7,8,9,10,18,19,20,21,22,23,24), color = '#ffbd69') %>% 
-    column_spec(column = c(11,12,13,14,15,16,17), color = '#adffff') %>% 
+    column_spec(1, bold = T, color = '#dedede') %>%
+    column_spec(column = c(4,5,6,7,8,9,10,18,19,20,21,22,23,24), color = '#ffbd69') %>%
+    column_spec(column = c(11,12,13,14,15,16,17), color = '#adffff') %>%
     add_header_above(c(
       ' ' = 1,
       'Cells' = 1,
@@ -693,7 +690,7 @@ make_summary_table <- function(){
       'Cells' = 2, 'Reads' = 3, 'UMIs' = 2,
       'Cells' = 2, 'Reads' = 3, 'UMIs' = 2,
       'Cells' = 2, 'Reads' = 3, 'UMIs' = 2),
-      color = '#dedede') %>% 
+      color = '#dedede') %>%
     add_header_above(c(' ' = 1,
                        'Loaded' = 1,
                        'Sequenced' = 1,
@@ -702,166 +699,163 @@ make_summary_table <- function(){
                        'Within-HTO doublets removed' = 7),
                      align = 'center',
                      bold = T, color = c('#dedede','#dedede','#dedede',
-                                                  '#ffbd69','#adffff','#ffbd69','#adffff','#ffbd69','#adffff')) %>% 
+                                                  '#ffbd69','#adffff','#ffbd69','#adffff','#ffbd69','#adffff')) %>%
                                                     add_header_above(c('Summary stats (RNA expression)' = 3,
                                                                        ' ' = 21),
                                                                      align = 'center',
                                                                      color = '#dedede',
                                                                      font_size = 20,
-                                                                     bold = T) %>% 
+                                                                     bold = T) %>%
     save_kable(file = file.path(summary.path,'rna_summary.html'), self_contained = T)
-  
+
   if ('hto' %in% lib.tib[['library_type']]) {
     stat.tib.hto <- tibble(
       # Raw - reads from fastqs
       'Cells (Loaded)' = double(),
       'Reads (Raw)' = double(),
-      
+
       # Called cells - (Barcode ranks)
       'Cells (Called)' = double(),  'Cells % Loaded (Called)' = character(),
       'Reads (Called)' = double(),  'Reads % Raw (Called)' = character(), 'Reads/Cell (Called)' = double(),
       'UMIs (Called)' = double(), 'UMIs/Cell (Called)' = double(),
-      
+
       # Called singlets (inter-HTO)
-      'Cells (inter-HTO)' = double(),  'Cells % Called (inter-HTO)' = character(), 
+      'Cells (inter-HTO)' = double(),  'Cells % Called (inter-HTO)' = character(),
       'Reads (inter-HTO)' = double(),  'Reads % Called (inter-HTO)' = character(), 'Reads/Cell (inter-HTO)' = double(),
       'UMIs (inter-HTO)' = double(), 'UMIs/Cell (inter-HTO)' = double(),
-      'Cells (Negative %)' = character(),    
-      'Cells (Doublet %)' = character(),    
+      'Cells (Negative %)' = character(),
+      'Cells (Doublet %)' = character(),
       'Cells (Singlet %)' = character(),
-      'Reads - HTO (Negative %)' = character(),    
-      'Reads - HTO (Doublet %)' = character(),    
+      'Reads - HTO (Negative %)' = character(),
+      'Reads - HTO (Doublet %)' = character(),
       'Reads - HTO (Singlet %)' = character(),
-      'Reads - RNA (Negative %)' = character(),    
-      'Reads - RNA (Doublet %)' = character(),    
+      'Reads - RNA (Negative %)' = character(),
+      'Reads - RNA (Doublet %)' = character(),
       'Reads - RNA (Singlet %)' = character()
     )
-    
+
     for (rnx.i in rnx.sheet[["reaction_id"]]) {
-      
+
       rnx.tib <- filter(rnx.sheet, reaction_id == rnx.i)
-      
+
       q.rnx <- rnx.tib[['reaction_id']]
       q.protocol <- rnx.tib[['seq_type']]
       q.cutoff <- rnx.tib[['cutoff']]
       q.organism <- rnx.tib[['align']]
-      
+
       lib.tib <- filter(rnxsheet.rnx2lib,
                         reaction_id == q.rnx)
       rnx.omnisheet <- filter(omnisheet, reaction_id == q.rnx)
-      
+
       q.index.hto <- rnx.omnisheet %>%
-        filter(library_type == 'hto') %>% 
-        select(index) %>% 
-        unique() %>% 
+        filter(library_type == 'hto') %>%
+        select(index) %>%
+        unique() %>%
         unlist()
-      
+
       q.bcl <- rnx.omnisheet %>%
-        select(bcl_folder) %>% 
-        unique() %>% 
+        select(bcl_folder) %>%
+        unique() %>%
         unlist()
-      
-      q.loaded <- rnx.omnisheet %>% 
-        filter(library_type == 'hto') %>% 
-        group_by(reaction_id) %>% 
-        summarise(loaded_cells_rnx = sum(loaded_cells)) %>% 
-        filter(reaction_id == q.rnx) %>% 
-        select(loaded_cells_rnx) %>% 
+
+      q.loaded <- rnx.omnisheet %>%
+        filter(library_type == 'hto') %>%
+        group_by(reaction_id) %>%
+        summarise(loaded_cells_rnx = sum(loaded_cells)) %>%
+        filter(reaction_id == q.rnx) %>%
+        select(loaded_cells_rnx) %>%
         unlist()
-      
-      q.lib.hto <- lib.tib %>% 
-        filter(library_type == 'hto') %>% 
-        select(library_id) %>% 
+
+      q.lib.hto <- lib.tib %>%
+        filter(library_type == 'hto') %>%
+        select(library_id) %>%
         unlist()
-      
+
       demult.stats.path <- file.path(
         project.path,
         'scRNAseq',
         'dry-lab',
         'FASTQ',
         q.bcl,
-        bcl.convert.version,
-        'Reports')
-      
+        'metadata')
+
       demultiplex.stats <- read_csv(file.path(demult.stats.path,
-                                              'Demultiplex_Stats.csv'))
-      
+                                              'read-demultiplexing.csv'))
+
       q.reads <- demultiplex.stats %>%
-        group_by(SampleID) %>% 
-        summarise(total_reads = sum(`# Reads`)) %>%
-        filter(SampleID == q.index.hto) %>% 
-        select(total_reads) %>% 
+        filter(index == q.index.10x) %>%
+        select(reads) %>%
         unlist()
-      
+
       mat.stats.path <- file.path(
         project.path,
         snakemake@config[['out_path']],
         snakemake@config[['com_id']],
         'metadata',
         q.rnx)
-      
+
       # Init
       stats.hto <- list()
-      
+
       # Collect barcode ranks data
       bc.df <- read.csv(file.path(mat.stats.path,'rna_cell-barcode_stats.csv'))
       valid.cbs <- bc.df[['Barcode']][bc.df[['State']] == 'Called']
-      
+
       # Read featureDump.txt
       mat.files.hto <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,q.rnx,q.lib.hto,'res')
       featDump.hto <- suppressMessages(read_delim(file.path(mat.files.hto,'featureDump.txt'), delim = '\t'))
-      
+
       stats.hto[['Reads (Raw)']] <- q.reads
       stats.hto[['Cells (Loaded)']] <- q.loaded
-      
+
       # CALLED CELLS - BARCODE RANKS
       # HTO
       stats.hto[['Cells (Called)']] <- length(unique(featDump.hto[featDump.hto[['CB']] %in% valid.cbs,][['CB']]))
       stats.hto[['Cells % Loaded (Called)']] <- paste(as.character(round(stats.hto[['Cells (Called)']] / stats.hto[['Cells (Loaded)']] * 100, 1)),'%')
-      
+
       stats.hto[['Reads (Called)']] <- sum(featDump.hto[featDump.hto[['CB']] %in% valid.cbs,][['MappedReads']])
       stats.hto[['Reads % Raw (Called)']] <- paste(as.character(round(stats.hto[['Reads (Called)']] / stats.hto[['Reads (Raw)']] * 100, 1)),'%')
       stats.hto[['Reads/Cell (Called)']] <- round(median(featDump.hto[featDump.hto[['CB']] %in% valid.cbs,][['MappedReads']]))
-      
+
       stats.hto[['UMIs (Called)']] <- round(sum(featDump.hto[featDump.hto[['CB']] %in% valid.cbs,][['DeduplicatedReads']]))
       stats.hto[['UMIs/Cell (Called)']] <- round(median(featDump.hto[featDump.hto[['CB']] %in% valid.cbs,][['DeduplicatedReads']]))
-      
+
       # CALLED SINGLETS (INTER-HTO)
       meta.data <- read.csv(file.path(mat.stats.path,'seurat_unfiltered_metadata.csv'))
       cells.negat.inter <- rownames(meta.data[meta.data[['HTO_globalClass']] == 'Negative',])
       cells.doubl.inter <- rownames(meta.data[meta.data[['HTO_globalClass']] == 'Doublet',])
       cells.singl.inter <- rownames(meta.data[meta.data[['HTO_globalClass']] == 'Singlet',])
-      
+
       # HTO
       stats.hto[['Cells (Negative %)']] <- paste(as.character(round(length(cells.negat.inter) / length(valid.cbs) * 100, 1)),'%')
       stats.hto[['Cells (Doublet %)']] <- paste(as.character(round(length(cells.doubl.inter) / length(valid.cbs) * 100, 1)),'%')
       stats.hto[['Cells (Singlet %)']] <- paste(as.character(round(length(cells.singl.inter) / length(valid.cbs) * 100, 1)),'%')
-      
+
       stats.hto[['Reads - HTO (Negative %)']] <- paste(as.character(round(sum(featDump.hto[featDump.hto[['CB']] %in% cells.negat.inter,][['MappedReads']]) / stats.hto[['Reads (Called)']] * 100, 1)),'%')
       stats.hto[['Reads - HTO (Doublet %)']] <- paste(as.character(round(sum(featDump.hto[featDump.hto[['CB']] %in% cells.doubl.inter,][['MappedReads']]) / stats.hto[['Reads (Called)']] * 100, 1)),'%')
       stats.hto[['Reads - HTO (Singlet %)']] <- paste(as.character(round(sum(featDump.hto[featDump.hto[['CB']] %in% cells.singl.inter,][['MappedReads']]) / stats.hto[['Reads (Called)']] * 100, 1)),'%')
-      
+
       stats.hto[['Reads - RNA (Negative %)']] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.negat.inter,][['MappedReads']]) / stats.10x[['Reads (Called)']] * 100, 1)),'%')
       stats.hto[['Reads - RNA (Doublet %)']] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.doubl.inter,][['MappedReads']]) / stats.10x[['Reads (Called)']] * 100, 1)),'%')
       stats.hto[['Reads - RNA (Singlet %)']] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[['CB']] %in% cells.singl.inter,][['MappedReads']]) / stats.10x[['Reads (Called)']] * 100, 1)),'%')
-      
+
       stats.hto[['Cells (inter-HTO)']] <- length(unique(featDump.hto[featDump.hto[['CB']] %in% cells.singl.inter,][['CB']]))
       stats.hto[['Cells % Called (inter-HTO)']] <- paste(as.character(round(stats.hto[['Cells (inter-HTO)']] / stats.hto[['Cells (Called)']] * 100, 1)),'%')
-      
+
       stats.hto[['Reads (inter-HTO)']] <- sum(featDump.hto[featDump.hto[['CB']] %in% cells.singl.inter,][['MappedReads']])
       stats.hto[['Reads % Called (inter-HTO)']] <- paste(as.character(round(stats.hto[['Reads (inter-HTO)']] / stats.hto[['Reads (Called)']] * 100, 1)),'%')
       stats.hto[['Reads/Cell (inter-HTO)']] <- round(median(featDump.hto[featDump.hto[['CB']] %in% cells.singl.inter,][['MappedReads']]))
-      
+
       stats.hto[['UMIs (inter-HTO)']] <- round(sum(featDump.hto[featDump.hto[['CB']] %in% cells.singl.inter,][['DeduplicatedReads']]))
       stats.hto[['UMIs/Cell (inter-HTO)']] <- round(median(featDump.hto[featDump.hto[['CB']] %in% cells.singl.inter,][['DeduplicatedReads']]))
-      
+
       # Bind to collective df
       stat.tib.hto <- bind_rows(stat.tib.hto,stats.hto)
     }
-    
+
     stat.df.hto <- as.data.frame(stat.tib.hto)
     rownames(stat.df.hto) <- rnx.sheet[['reaction_id']]
-    
+
     stat.df.hto %>%
       kbl(escape = F, col.names = c('','',
                                     'remaining','% loaded','remaining','% sequenced','per cell','remaining','per cell',
@@ -870,11 +864,11 @@ make_summary_table <- function(){
                                     'Negative %','Doublet %','Singlet %',
                                     'Negative %','Doublet %','Singlet %'),
           format.args = list(big.mark = ','),
-          booktabs = T) %>% 
+          booktabs = T) %>%
       row_spec(0, color = '#dedede', angle = 25,align = 'center', font_size = '12') %>%
       kable_material_dark(full_width = F, html_font = 'helvetica', lightable_options = 'basic') %>%
       column_spec(1, bold = T, color = '#dedede') %>%
-      column_spec(column = c(4,5,6,7,8,9,10,18,19,20,21,22,23,24,25,26), color = '#ffbd69') %>% 
+      column_spec(column = c(4,5,6,7,8,9,10,18,19,20,21,22,23,24,25,26), color = '#ffbd69') %>%
       column_spec(column = c(11,12,13,14,15,16,17), color = '#adffff') %>%
       add_header_above(c(' ' = 1,
                          'Cells' = 1,
@@ -882,7 +876,7 @@ make_summary_table <- function(){
                          'Cells' = 2, 'Reads' = 3, 'UMIs' = 2,
                          'Cells' = 2, 'Reads' = 3, 'UMIs' = 2,
                          'Cells' = 3, 'Reads (HTO)' = 3, 'Reads (RNA)' = 3),
-                       color = '#dedede') %>% 
+                       color = '#dedede') %>%
       add_header_above(c(' ' = 1,
                          'Loaded' = 1,
                          'Sequenced' = 1,
@@ -891,22 +885,22 @@ make_summary_table <- function(){
                          'Classification proportions' = 9),
                        align = 'center',
                        bold = T, color = c('#dedede','#dedede','#dedede',
-                                                    '#ffbd69','#adffff','#ffbd69')) %>% 
+                                                    '#ffbd69','#adffff','#ffbd69')) %>%
                                                       add_header_above(c('Summary stats (HTO expression)' = 4,
                                                                          ' ' = 22),
                                                                        align = 'center',
                                                                        color = '#dedede',
                                                                        font_size = 20,
-                                                                       bold = T) %>% 
+                                                                       bold = T) %>%
       save_kable(file = file.path(summary.path,'hto_summary.html'), self_contained = T)
   }
-  
+
 }
 
 make_plot_top10bcl <- function(df) {
-  
+
   df <- df[1:10,]
-  
+
   p <- ggplot(df) +
     geom_bar(mapping = aes(x = reorder(dual_index, reads), y = reads),
              stat = 'identity',
@@ -916,13 +910,13 @@ make_plot_top10bcl <- function(df) {
     coord_flip() +
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font))
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_bclDistribution <- function(df) {
-  
+
   p <- ggplot(df, aes(x = index, y = reads, fill = class)) +
     geom_bar(stat = 'identity') +
     coord_flip() +
@@ -932,38 +926,38 @@ make_plot_bclDistribution <- function(df) {
                       values = softPallet(3)) +
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom')
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
-  
+
   knee <- annot[['Knee']]
   inflection <- annot[['Inflection']]
-  
+
   breaks <- pretty(range(df[['nUMI_RNA']]), n = nclass.scott(df[['nUMI_RNA']]), min.n = 1)
   bwidth <- breaks[2] - breaks[1]
-  
+
   # rank plot
   p1 <- ggplot(df) +
     geom_vline(xintercept = 80000, linetype = 5, color = my.cols[['Greyneric']], size = .5) +
     geom_line(data = ref, mapping = aes(x = Rank, y = nUMI_RNA), alpha = 0.75, linewidth = 1, linetype = 3, color = my.cols[['Greyneric']]) +
     geom_line(mapping = aes(x = Rank, y = nUMI_RNA, col = State), linewidth = 2)
-  
+
   # frequency plot
   p2 <- ggplot(df) +
     geom_histogram(aes(x = nUMI_RNA, fill = State), bins = length(breaks))
-  
+
   if (annot[['Multimodal']] == F) {
-    
+
     p1 <- p1 +
       geom_hline(aes(yintercept = knee, linetype = 'Knee'), color = my.cols[['Highlight']], linewidth = .75) +
       scale_linetype_manual(name = '',
                             limits = c('Reference','Knee','Optimal plateau drop'),
                             values = c(3, 2, 5),
                             guide = guide_legend(nrow = 2, override.aes = list(color = c(my.cols[['Greyneric']], my.cols[['Highlight']], my.cols[['Greyneric']]))))
-    
+
     p2 <- p2 +
       geom_vline(aes(xintercept = knee, linetype = 'Knee'), size = .75, color = my.cols[['Highlight']]) +
       scale_linetype_manual(name = '',
@@ -971,13 +965,13 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
                             values = c(2),
                             guide = guide_legend(override.aes = list(color = c(my.cols[['Highlight']])))) +
       ggtitle(rnx.name, subtitle = paste(annot$Rank_cutoff, rnx.type))
-    
+
   }
   if (annot[['Multimodal']] == T) {
-    
+
     knee.new <- annot[['Knee.upd']]
     inflection.new <- annot[['Inflection.upd']]
-    
+
     p1 <- p1 +
       geom_hline(aes(yintercept = knee.new, linetype = 'Knee (new)'), color = my.cols[['Highlight']], size = .75) +
       geom_hline(aes(yintercept = knee, linetype = 'Knee (old)'), color = my.cols[['Lowlight']], size = .75) +
@@ -985,7 +979,7 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
                             limits = c('Reference', 'Knee (new)', 'Knee (old)', 'Optimal plateau drop'),
                             values = c(3, 2, 2, 5),
                             guide = guide_legend(nrow = 2, override.aes = list(color = c(my.cols[['Greyneric']],my.cols[['Highlight']], my.cols[['Lowlight']], my.cols[['Greyneric']]))))
-    
+
     p2 <- p2 +
       geom_vline(aes(xintercept = knee.new, linetype = 'Knee (new)'), size = .75, color = my.cols[['Highlight']]) +
       geom_vline(aes(xintercept = knee, linetype = 'Knee (old)'), size = .75, color = my.cols[['Lowlight']]) +
@@ -994,13 +988,13 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
                             values = c(2, 2),
                             guide = guide_legend(override.aes = list(color = c(my.cols[['Highlight']], my.cols[['Lowlight']])))) +
       ggtitle(rnx.name, subtitle = paste(annot$Rank_cutoff, rnx.type))
-    
+
   }
   if (annot[['Manual']] == T) {
-    
+
     knee.new <- annot[['Knee.manual']]
     inflection.new <- annot[['Inflection.manual']]
-    
+
     p1 <- p1 +
       geom_hline(aes(yintercept = knee.new, linetype = 'Knee (new)'), color = my.cols[['Highlight']], size = 1) +
       geom_hline(aes(yintercept = knee, linetype = 'Knee (old)'), color = my.cols[['Lowlight']], size = 1) +
@@ -1008,7 +1002,7 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
                             limits = c('Reference', 'Knee (new)', 'Knee (old)', 'Optimal plateau drop'),
                             values = c(3, 2, 2, 5),
                             guide = guide_legend(nrow = 1, override.aes = list(color = c(my.cols[['Greyneric']],my.cols[['Highlight']], my.cols[['Lowlight']], my.cols[['Greyneric']]))))
-    
+
     p2 <- p2 +
       geom_vline(aes(xintercept = knee.new, linetype = 'Knee (new)'), size = 1, color = my.cols[['Highlight']]) +
       geom_vline(aes(xintercept = knee, linetype = 'Knee (old)'), size = 1, color = my.cols[['Lowlight']]) +
@@ -1017,9 +1011,9 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
                             values = c(2, 2),
                             guide = guide_legend(override.aes = list(color = c(my.cols[['Highlight']], my.cols[['Lowlight']])))) +
       ggtitle(rnx.name, subtitle = paste(annot$Rank_cutoff, rnx.type, '\t|\tlower threshold:',annot[['Manual.thresh']]))
-    
+
   }
-  
+
   p1 <- p1 +
     scale_color_manual(name = '',
                        labels = c('Called', 'Uncalled'),
@@ -1032,7 +1026,7 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
     annotation_logticks(sides = 'b') +
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom', axis.line.y = element_line(size = .5, color = my.cols[['Greyneric']], linetype = 'solid'), axis.text.y = element_blank(), plot.margin = margin(l = 0))
-  
+
   p2 <- p2 +
     scale_fill_manual(name = '',
                       values = c(my.cols[['Called']],my.cols[['Uncalled']]),
@@ -1044,18 +1038,18 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
     annotation_logticks() +
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font), legend.position = 'none', plot.margin = margin(r = 0))
-  
+
   p.empty <- ggplot() +
     theme_minimal()
   combined <- patchwork::wrap_plots(p2, p1) + theme(legend.justification = c(3.5,0))
-  
+
   return(combined)
 }
 
 make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata, rnx.name, q_l = 1, q_h = 0.001) {
-  
+
   hto.cutoff.metadata[['hto']] <- hto.cutoff.metadata[['hto_name']]
-  
+
   p <- ggplot(hto.sample.calling.metadata, aes(x = expression, fill = above_cutoff)) +
     geom_histogram(bins = 100) +
     facet_wrap(~sample_id, scales = 'free',ncol = 3) +
@@ -1069,13 +1063,13 @@ make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata
     ggtitle(rnx.name, subtitle = paste0('Q_negative = ', q_l, '; Q_positive = ', q_h)) +
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom')
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_htoVlnGlobal <- function(meta.data, rnx.name) {
-  
+
   p <- ggplot(meta.data,
               aes(x = HTO_globalClass,
                   y = nCount_HTO,
@@ -1094,19 +1088,19 @@ make_plot_htoVlnGlobal <- function(meta.data, rnx.name) {
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
 
-  p <- patchwork::wrap_plots(p)  
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_htoVlnIndividual <- function(meta.data, rnx.name) {
-  
+
   meta.data[['sampleID']] <- factor(meta.data[['sampleID']],
                                     levels = c(c('Doublet','Negative'),setdiff(meta.data[['sampleID']],c('Doublet','Negative'))))
-  
+
   tmp.color.palette <- c(my.cols[['Doublet']],
                          my.cols[['Negative']],
                          softPallet(length(levels(meta.data[['sampleID']])) - 2))
-  
+
   p <- ggplot(meta.data,
               aes(x = sampleID,
                   y = nCount_HTO,
@@ -1123,13 +1117,13 @@ make_plot_htoVlnIndividual <- function(meta.data, rnx.name) {
     theme(legend.position = 'none',
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_htotsne <- function(meta.data, choosen.class = 'Individual', rnx.name) {
-  
+
   if (choosen.class == 'Individual') {
     meta.data[['sampleID']] <- factor(meta.data[['sampleID']],
                                       levels = c(c('Doublet','Negative'),
@@ -1138,7 +1132,7 @@ make_plot_htotsne <- function(meta.data, choosen.class = 'Individual', rnx.name)
     tmp.color.palette <- c(my.cols[['Doublet']],
                            my.cols[['Negative']],
                            softPallet(length(levels(meta.data[['sampleID']])) - 2))
-    
+
     p <- ggplot(meta.data) +
       geom_point(aes(x = HTO_tsne1, y = HTO_tsne2, col = sampleID, alpha = .25)) +
       scale_color_manual(values = tmp.color.palette) +
@@ -1148,13 +1142,13 @@ make_plot_htotsne <- function(meta.data, choosen.class = 'Individual', rnx.name)
       theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
       ggtitle(rnx.name)
   }
-  
+
   if (choosen.class == 'Global') {
-    
+
     tmp.color.palette <- c(my.cols[['Doublet']],
                            my.cols[['Negative']],
                            my.cols[['Singlet']])
-    
+
     p <- ggplot(meta.data) +
       geom_point(aes(x = HTO_tsne1, y = HTO_tsne2, col = HTO_globalClass, alpha = .25)) +
       scale_color_manual(values = tmp.color.palette) +
@@ -1165,17 +1159,17 @@ make_plot_htotsne <- function(meta.data, choosen.class = 'Individual', rnx.name)
       #NoGrid() +
       ggtitle(rnx.name)
   }
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_InfDoubl_std <- function(meta.data, reduction = 'tSNE', rnx.name) {
-  
+
   opacity.vec <- ifelse(meta.data[['RNA_recoveredDoubletBool']] == T, 1, .25)
-  
+
   p <- ggplot(meta.data)
-  
+
   if (reduction == 'tSNE') {
     p <- p + geom_point(aes(x = SCT_tsne1, y = SCT_tsne2, col = RNA_recoveredDoubletBool), alpha = opacity.vec) +
       labs(x = 'tSNE 1', y = 'tSNE 2', color = 'Intra-HTO doublet')
@@ -1184,7 +1178,7 @@ make_plot_InfDoubl_std <- function(meta.data, reduction = 'tSNE', rnx.name) {
     p <- p + geom_point(aes(x = SCT_umap1, y = SCT_umap2, col = RNA_recoveredDoubletBool), alpha = opacity.vec) +
       labs(x = 'UMAP 1', y = 'UMAP 2', color = 'Intra-HTO doublet')
   }
-  
+
   p <- p +
     scale_color_manual(values = c(my.cols[['Negative']],
                                   my.cols[['Doublet']])) +
@@ -1192,15 +1186,15 @@ make_plot_InfDoubl_std <- function(meta.data, reduction = 'tSNE', rnx.name) {
     guides(alpha = 'none') +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name)
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_InfDoubl_prop <- function(meta.data, reduction = 'tSNE', rnx.name) {
-  
+
   p <- ggplot(meta.data)
-  
+
   if (reduction == 'tSNE') {
     p <- p + geom_point(aes(x = SCT_tsne1, y = SCT_tsne2, col = RNA_doubletNeighborProportion)) +
       labs(x = 'tSNE 1', y = 'tSNE 2', color = 'Doublet neighbours proportion')
@@ -1209,23 +1203,23 @@ make_plot_InfDoubl_prop <- function(meta.data, reduction = 'tSNE', rnx.name) {
     p <- p + geom_point(aes(x = SCT_umap1, y = SCT_umap2, col = RNA_doubletNeighborProportion)) +
       labs(x = 'UMAP 1', y = 'UMAP 2', color = 'Doublet neighbour proportion')
   }
-  
+
   p <- p +
     scale_color_viridis() +
     theme_minimal(base_size = base.size) +
     guides(alpha = 'none') +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name)
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_InfDoubl_knee <- function(doub.data, rnx.name) {
-  
+
   doub.data <- mutate(doub.data,
                       above_cut = proportion > cut)
-  
+
   p <- ggplot(doub.data) +
     geom_point(aes(x = proportion, y = n_cells, color = above_cut)) +
     labs(x = 'Proportion - doublet neighbors', y = 'Cells', color = 'Inferential doublet') +
@@ -1235,18 +1229,18 @@ make_plot_InfDoubl_knee <- function(doub.data, rnx.name) {
                        guide = guide_legend(override.aes = list(color = c(my.cols[['Negative']],my.cols[['Doublet']])))) +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name)
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
-  
+
 }
 
 make_plot_InfDoubl_cut <- function(meta.data, reduction = 'tSNE', rnx.name) {
-  
+
   opacity.vec <- ifelse(meta.data$RNA_doubletNeighborBool == T, 1, .25)
-  
+
   p <- ggplot(meta.data)
-  
+
   if (reduction == 'tSNE') {
     p <- p +
       geom_point(aes(x = SCT_tsne1, y = SCT_tsne2, col = RNA_doubletNeighborBool), alpha = opacity.vec) +
@@ -1257,7 +1251,7 @@ make_plot_InfDoubl_cut <- function(meta.data, reduction = 'tSNE', rnx.name) {
       geom_point(aes(x = SCT_umap1, y = SCT_umap2, col = RNA_doubletNeighborBool), alpha = opacity.vec) +
       labs(x = 'UMAP 1', y = 'UMAP 2', color = 'Inferential doublet')
   }
-  
+
   p <- p +
     scale_color_manual(values = c(my.cols[['Negative']],
                                   my.cols[['Doublet']])) +
@@ -1265,13 +1259,13 @@ make_plot_InfDoubl_cut <- function(meta.data, reduction = 'tSNE', rnx.name) {
     guides(alpha = 'none') +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name)
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_htoVlnAll <- function(meta.data, rnx.name) {
-  
+
   mutate(meta.data,
          doublet_type = factor(ifelse(HTO_doubletBool == T, 'Inter-HTO doublet',
                                       ifelse(RNA_recoveredDoubletBool == T, 'Intra-HTO doublet (profile)',
@@ -1279,7 +1273,7 @@ make_plot_htoVlnAll <- function(meta.data, rnx.name) {
                                                     ifelse(HTO_globalClass == 'Negative', 'Negative',
                                                            'Singlet')))),
                                levels = c('Negative','Singlet','Inter-HTO doublet','Intra-HTO doublet (profile)','Intra-HTO doublet (neighbours)'))) -> meta.data
-  
+
   p <- ggplot(meta.data[meta.data$HTO_globalClass != 'Negative',],
               aes(x = doublet_type,
                   y = nCount_RNA,
@@ -1295,15 +1289,15 @@ make_plot_htoVlnAll <- function(meta.data, rnx.name) {
     theme(legend.position = 'none',
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_rnaVln <- function(meta.data, rnx.name) {
-  
+
   tmp.color.palette <- softPallet(length(unique(meta.data[['sampleID']])))
-  
+
   p <- ggplot(meta.data,
               aes(x = sampleID,
                   y = nCount_RNA,
@@ -1320,15 +1314,15 @@ make_plot_rnaVln <- function(meta.data, rnx.name) {
     theme(legend.position = 'none',
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
 
 make_plot_umap_class <- function(meta.data, rnx.name) {
-  
+
   tmp.color.palette <- softPallet(length(unique(meta.data[['sampleID']])))
-  
+
   p <- ggplot(meta.data) +
     geom_point(aes(x = SCT_umap1, y = SCT_umap2, col = sampleID, alpha = .25)) +
     scale_color_manual(values = tmp.color.palette,guide = guide_legend(nrow = 3)) +
@@ -1337,7 +1331,7 @@ make_plot_umap_class <- function(meta.data, rnx.name) {
     guides(alpha = 'none') +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom') +
     ggtitle(rnx.name, subtitle = 'SCT assay')
-  
+
   p <- patchwork::wrap_plots(p)
   return(p)
 }
@@ -1345,14 +1339,14 @@ make_plot_umap_class <- function(meta.data, rnx.name) {
 # Data
 bc.df.ref <- read.csv('data/bc-df-ref.csv')
 
-demux_counts <- function(stats_folder, 
+demux_counts <- function(stats_folder,
                          this_sequencing_id,
                          config = snakemake@config) {
   stats_file <- file.path(stats_folder, "Demultiplex_Stats.csv")
   if (!file.exists(stats_file)) {
     stop(stats_file, " does not exist.")
   }
-  reads <- readr::read_csv(stats_file, 
+  reads <- readr::read_csv(stats_file,
                            col_select = c(
                              "Lane"          = "Lane",
                              "index"         = "SampleID",
@@ -1360,7 +1354,7 @@ demux_counts <- function(stats_folder,
                              "Perfect Index" = "# Perfect Index Reads",
                              "One Mismatch"  = "# One Mismatch Index Reads",
                              "Two Mismatch"  = "# Two Mismatch Index Reads"
-                           ), 
+                           ),
                            col_types = c(
                              "Lane"          = readr::col_character(),
                              "SampleID"      = readr::col_character(),
@@ -1369,9 +1363,9 @@ demux_counts <- function(stats_folder,
                              "One Mismatch"  = readr::col_integer(),
                              "Two Mismatch"  = readr::col_integer())
   )
-  
-  types <- merge_sheets("reaction2library", "library_sheet", 
-                        "library2sequencing", "sequencing_sheet", 
+
+  types <- merge_sheets("reaction2library", "library_sheet",
+                        "library2sequencing", "sequencing_sheet",
                         config = config) |>
     dplyr::filter(sequencing_id == this_sequencing_id) |>
     dplyr::select(c("reaction_id", "library_type", "index"))
@@ -1384,18 +1378,18 @@ demux_counts <- function(stats_folder,
 }
 
 plot_demux_stats <- function(demux_stats) {
-  
+
   plot_data <- demux_stats |>
     dplyr::select(-c("Reads")) |>
-    tidyr::pivot_longer(cols = c("Perfect Index", 
-                                 "One Mismatch", 
+    tidyr::pivot_longer(cols = c("Perfect Index",
+                                 "One Mismatch",
                                  "Two Mismatch")) |>
-    dplyr::mutate(name = factor(name, levels = c("Two Mismatch", 
-                                                 "One Mismatch", 
+    dplyr::mutate(name = factor(name, levels = c("Two Mismatch",
+                                                 "One Mismatch",
                                                  "Perfect Index"))) |>
     dplyr::mutate(index = ifelse(index == "Undetermined", "", index)) |>
     dplyr::filter(value > 0)
-  
+
   # We want 10x/RNA and HTO in the beginning and Unknown in the end.
   # Other types may come in the future.
   order <- factor(unique(plot_data[["library_type"]]))
@@ -1406,25 +1400,25 @@ plot_demux_stats <- function(demux_stats) {
       order <- relevel(order, i)
     }
   }
-  
+
   plot_data[["library_type"]] <- factor(plot_data[["library_type"]],
                                         levels = levels(order),
                                         ordered = TRUE)
-  
+
   cols <- softPallet(3)
-  
+
   fill_scale <- scale_fill_manual(
     name = element_blank(),
     values = c(
-      "Perfect Index" = cols[1], 
-      "One Mismatch"  = cols[2], 
+      "Perfect Index" = cols[1],
+      "One Mismatch"  = cols[2],
       "Two Mismatch"  = cols[3]
     ),
     breaks = c(
       "Perfect Index", "One Mismatch", "Two Mismatch"
     ),
     drop = TRUE)
-  
+
   ggplot(plot_data, aes(x = reaction_id, y = value, fill = name)) +
     geom_bar(position = position_stack(), stat = "identity") +
     coord_flip() +
@@ -1438,18 +1432,18 @@ plot_demux_stats <- function(demux_stats) {
 }
 
 theme_comuneqaid <- function(base_size = 10, base_family = "Helvetica") {
-  theme_bw(base_size = base_size, base_family = base_family) 
+  theme_bw(base_size = base_size, base_family = base_family)
 }
 
 merge_sheets <- function(..., config = snakemake@config) {
   table_names <- unlist(list(...))
-  
+
   # Tables need to be present in config
   present <- table_names %in% names(config)
   if (!all(present)) {
     stop(paste0(table_names[!present], collapse = ", "), " not in config")
   }
-  
+
   reduce(.x = config[table_names],
          .f = merge.data.frame)
 }

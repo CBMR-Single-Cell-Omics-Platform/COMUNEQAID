@@ -595,6 +595,7 @@ make_summary_table <- function(){
 
     q.reads <- demultiplex.stats %>%
       filter(index == q.index.10x) %>%
+      filter(library_type == '10x') %>%
       select(Reads) %>%
       unlist()
 
@@ -784,6 +785,7 @@ make_summary_table <- function(){
 
       q.reads <- demultiplex.stats %>%
         filter(index == q.index.10x) %>%
+        filter(library_type == 'hto') %>%
         select(Reads) %>%
         unlist()
 

@@ -595,7 +595,7 @@ make_summary_table <- function(){
 
     q.reads <- demultiplex.stats %>%
       filter(index == q.index.10x) %>%
-      select(reads) %>%
+      select(Reads) %>%
       unlist()
 
     mat.stats.path <- file.path(
@@ -784,7 +784,7 @@ make_summary_table <- function(){
 
       q.reads <- demultiplex.stats %>%
         filter(index == q.index.10x) %>%
-        select(reads) %>%
+        select(Reads) %>%
         unlist()
 
       mat.stats.path <- file.path(

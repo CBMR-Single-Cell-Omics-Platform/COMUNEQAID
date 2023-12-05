@@ -583,10 +583,9 @@ make_summary_table <- function(){
       unlist()
     
     demult.stats.path <- file.path(
-      project.path,
-      'scRNAseq',
-      'dry-lab',
-      'FASTQ',
+      snakemake@config[['project_path']],
+      snakemake@config[['scop_id']],
+      snakemake@config[['fastq_path']],
       q.bcl,
       bcl.convert.version,
       'Reports')
@@ -775,14 +774,13 @@ make_summary_table <- function(){
         unlist()
       
       demult.stats.path <- file.path(
-        project.path,
-        'scRNAseq',
-        'dry-lab',
-        'FASTQ',
+        snakemake@config[['project_path']],
+        snakemake@config[['scop_id']],
+        snakemake@config[['fastq_path']],
         q.bcl,
         bcl.convert.version,
         'Reports')
-      
+        
       demultiplex.stats <- read_csv(file.path(demult.stats.path,
                                               'Demultiplex_Stats.csv'))
       

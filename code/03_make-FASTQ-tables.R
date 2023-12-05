@@ -15,6 +15,10 @@ project.path <-
   file.path(snakemake@config[['project_path']],
             snakemake@config[['scop_id']])
 
+fastq_path <- file.path(project.path,
+                        snakemake@config[['fastq_path']]
+)
+
 # Metadata
 suppressMessages({
   rnx2lib.libsheet.lib2seq.seqsheet <-
@@ -106,7 +110,7 @@ for (bcl in unique(rnx2lib.libsheet.lib2seq.seqsheet[['bcl_folder']])) {
   cat(paste0('#\t..\timporting demultiplexing stats..\n'),
       sep = '')
   
-  demult.stats.path <- file.path(project.path,'scRNAseq','dry-lab','FASTQ',bcl,bcl.convert.version,'Reports')
+  demult.stats.path <- file.path(fastq_path,bcl,bcl.convert.version,'Reports')
   read.tib <- demux_counts(demult.stats.path, this_sequencing_id = sequencing_id)
   write_csv(x = read.tib,
               file = file.path(fastq.stats.path,'read-demultiplexing.csv'),

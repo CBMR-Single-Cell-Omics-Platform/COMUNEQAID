@@ -12,32 +12,32 @@ get_software_version <- function(software) {
     `alevin-fry` = "alevin-fry --version",
     `bcl-convert` = "bcl-convert --version"
   )
-
+  
   if (!software %in% names(commands)) {
     stop(paste("Unsupported software:", software))
   }
-
+  
   command_with_redirect <- paste(commands[[software]], "2>&1")
   output <- system(command_with_redirect, intern = T)
-
+  
   # For bcl-convert, assuming it's a two-line output and version is on the first line
   if (software == "bcl-convert") {
     words <- unlist(strsplit(output[1], " "))
   } else {
     words <- unlist(strsplit(output, " "))
   }
-
+  
   software_name <- tolower(words[1])
-
+  
   if (software == "bcl-convert") {
     version_full <- words[3]
     version_segments <- unlist(strsplit(version_full, "\\."))
-
+    
     version <- paste0("v", paste(tail(version_segments, 3), collapse="."))
   } else {
     version <- paste0("v", words[2])
   }
-
+  
   return(paste0(software_name, "_", version))
 }
 
@@ -363,13 +363,13 @@ process_seur <- function(seur, n.pca.dims = 50, assay = 'RNA', verbose = F) {
 dub_cutoff <- function(x) {
   
   # calculate number of neighbors at each proportion that are doublets
-  data.frame("proportion" = x$RNA_doubletNeighborProportion) %>% 
-    group_by(proportion) %>% 
-    summarize(n_cells = n()) %>% 
-    mutate(pct_cells = n_cells / sum(n_cells)) -> data 
+  data.frame("proportion" = x$RNA_doubletNeighborProportion) %>%
+    group_by(proportion) %>%
+    summarize(n_cells = n()) %>%
+    mutate(pct_cells = n_cells / sum(n_cells)) -> data
   
   
-  # find point at which we gain very few doublets as proportion increases 
+  # find point at which we gain very few doublets as proportion increases
   cut <- data$proportion[PCAtools::findElbowPoint(variance = sort(data$n_cells, decreasing = T)) + 1]
   vec <- if_else(x$RNA_doubletNeighborProportion <= cut, F, T)
   
@@ -435,7 +435,7 @@ select_hash_cutoff_mcl <- function(x, q_l = 1, q_h = 0.01, seed = 42) {
   cl_center = km$parameters$mean
   high_cl <- which(cl_center == max(cl_center))
   low_cl <- which(cl_center != max(cl_center))
-  # q_l and q_h are the quantiles for negative and postive cluster, respectively. 
+  # q_l and q_h are the quantiles for negative and postive cluster, respectively.
   cutoff <- max(quantile(x[cl == low_cl], q_l), quantile(x[cl == high_cl], q_h))
   # The higher the cut off, the less false positive (the more false negative).
   return(cutoff)
@@ -472,7 +472,7 @@ HTO_classifcation = function(discrete, hto_mcl.p, assay){
   hash.secondID <- as.character(donor.id[apply(X = hto_mcl.p, MARGIN = 2, FUN = function(x) order(x,decreasing = T)[2])])
   hash.margin <- hash.max - hash.second
   doublet_id <- sapply(X = 1:length(x = hash.maxID), FUN = function(x) {
-    return(paste(sort(x = c(hash.maxID[x], hash.secondID[x])), 
+    return(paste(sort(x = c(hash.maxID[x], hash.secondID[x])),
                  collapse = "_"))
   })
   classification <- classification.global
@@ -498,7 +498,7 @@ catHeader_w_tabset <- function(text = "", level = 3) {
              " ", text, " {.tabset}","\n"))
 }
 
-# Visualization 
+# Visualization
 plotting.font <- 'Helvetica'
 base.size = 10
 
@@ -559,27 +559,27 @@ make_summary_table <- function(){
     rnx.omnisheet <- filter(omnisheet, reaction_id == q.rnx)
     
     q.index.10x <- rnx.omnisheet %>%
-      filter(library_type == '10x') %>% 
-      select(index) %>% 
-      unique() %>% 
+      filter(library_type == '10x') %>%
+      select(index) %>%
+      unique() %>%
       unlist()
     
     q.bcl <- rnx.omnisheet %>%
-      select(bcl_folder) %>% 
-      unique() %>% 
+      select(bcl_folder) %>%
+      unique() %>%
       unlist()
     
-    q.loaded <- rnx.omnisheet %>% 
-      filter(library_type == '10x') %>% 
-      group_by(reaction_id) %>% 
-      summarise(loaded_cells_rnx = sum(loaded_cells)) %>% 
-      filter(reaction_id == q.rnx) %>% 
-      select(loaded_cells_rnx) %>% 
+    q.loaded <- rnx.omnisheet %>%
+      filter(library_type == '10x') %>%
+      group_by(reaction_id) %>%
+      summarise(loaded_cells_rnx = sum(loaded_cells)) %>%
+      filter(reaction_id == q.rnx) %>%
+      select(loaded_cells_rnx) %>%
       unlist()
     
-    q.lib.10x <- lib.tib %>% 
-      filter(library_type == '10x') %>% 
-      select(library_id) %>% 
+    q.lib.10x <- lib.tib %>%
+      filter(library_type == '10x') %>%
+      select(library_id) %>%
       unlist()
     
     demult.stats.path <- file.path(
@@ -587,18 +587,16 @@ make_summary_table <- function(){
       snakemake@config[['scop_id']],
       snakemake@config[['fastq_path']],
       q.bcl,
-      bcl.convert.version,
-      'Reports')
+      'metadata')
     
     demultiplex.stats <- read_csv(file.path(demult.stats.path,
-                                            'Demultiplex_Stats.csv'))
+                                            'read-demultiplexing.csv'))
     
     q.reads <- demultiplex.stats %>%
-      group_by(SampleID) %>% 
-      summarise(total_reads = sum(`# Reads`)) %>%
-      filter(SampleID == q.index.10x) %>% 
-      select(total_reads) %>% 
-      unlist()
+      filter(index == q.index.10x) %>%
+      select(Reads) %>%
+      unlist() %>%
+      sum()
     
     mat.stats.path <- file.path(
       project.path,
@@ -679,12 +677,12 @@ make_summary_table <- function(){
                                   'remaining','% called','remaining','% called','per cell','remaining','per cell',
                                   'remaining','% singlets','remaining','% singlets','per cell','remaining','per cell'),
         format.args = list(big.mark = ','),align = rep('c',25),
-        booktabs = T) %>% 
+        booktabs = T) %>%
     row_spec(0, color = '#dedede', angle = 25, align = 'center', font_size = '12') %>%
     kable_material_dark(full_width = F, html_font = 'helvetica', lightable_options = 'basic') %>%
-    column_spec(1, bold = T, color = '#dedede') %>% 
-    column_spec(column = c(4,5,6,7,8,9,10,18,19,20,21,22,23,24), color = '#ffbd69') %>% 
-    column_spec(column = c(11,12,13,14,15,16,17), color = '#adffff') %>% 
+    column_spec(1, bold = T, color = '#dedede') %>%
+    column_spec(column = c(4,5,6,7,8,9,10,18,19,20,21,22,23,24), color = '#ffbd69') %>%
+    column_spec(column = c(11,12,13,14,15,16,17), color = '#adffff') %>%
     add_header_above(c(
       ' ' = 1,
       'Cells' = 1,
@@ -692,7 +690,7 @@ make_summary_table <- function(){
       'Cells' = 2, 'Reads' = 3, 'UMIs' = 2,
       'Cells' = 2, 'Reads' = 3, 'UMIs' = 2,
       'Cells' = 2, 'Reads' = 3, 'UMIs' = 2),
-      color = '#dedede') %>% 
+      color = '#dedede') %>%
     add_header_above(c(' ' = 1,
                        'Loaded' = 1,
                        'Sequenced' = 1,
@@ -701,13 +699,13 @@ make_summary_table <- function(){
                        'Within-HTO doublets removed' = 7),
                      align = 'center',
                      bold = T, color = c('#dedede','#dedede','#dedede',
-                                                  '#ffbd69','#adffff','#ffbd69','#adffff','#ffbd69','#adffff')) %>% 
-                                                    add_header_above(c('Summary stats (RNA expression)' = 3,
-                                                                       ' ' = 21),
-                                                                     align = 'center',
-                                                                     color = '#dedede',
-                                                                     font_size = 20,
-                                                                     bold = T) %>% 
+                                         '#ffbd69','#adffff','#ffbd69','#adffff','#ffbd69','#adffff')) %>%
+    add_header_above(c('Summary stats (RNA expression)' = 3,
+                       ' ' = 21),
+                     align = 'center',
+                     color = '#dedede',
+                     font_size = 20,
+                     bold = T) %>%
     save_kable(file = file.path(summary.path,'rna_summary.html'), self_contained = T)
   
   if ('hto' %in% lib.tib[['library_type']]) {
@@ -722,17 +720,17 @@ make_summary_table <- function(){
       'UMIs (Called)' = double(), 'UMIs/Cell (Called)' = double(),
       
       # Called singlets (inter-HTO)
-      'Cells (inter-HTO)' = double(),  'Cells % Called (inter-HTO)' = character(), 
+      'Cells (inter-HTO)' = double(),  'Cells % Called (inter-HTO)' = character(),
       'Reads (inter-HTO)' = double(),  'Reads % Called (inter-HTO)' = character(), 'Reads/Cell (inter-HTO)' = double(),
       'UMIs (inter-HTO)' = double(), 'UMIs/Cell (inter-HTO)' = double(),
-      'Cells (Negative %)' = character(),    
-      'Cells (Doublet %)' = character(),    
+      'Cells (Negative %)' = character(),
+      'Cells (Doublet %)' = character(),
       'Cells (Singlet %)' = character(),
-      'Reads - HTO (Negative %)' = character(),    
-      'Reads - HTO (Doublet %)' = character(),    
+      'Reads - HTO (Negative %)' = character(),
+      'Reads - HTO (Doublet %)' = character(),
       'Reads - HTO (Singlet %)' = character(),
-      'Reads - RNA (Negative %)' = character(),    
-      'Reads - RNA (Doublet %)' = character(),    
+      'Reads - RNA (Negative %)' = character(),
+      'Reads - RNA (Doublet %)' = character(),
       'Reads - RNA (Singlet %)' = character()
     )
     
@@ -750,27 +748,27 @@ make_summary_table <- function(){
       rnx.omnisheet <- filter(omnisheet, reaction_id == q.rnx)
       
       q.index.hto <- rnx.omnisheet %>%
-        filter(library_type == 'hto') %>% 
-        select(index) %>% 
-        unique() %>% 
+        filter(library_type == 'hto') %>%
+        select(index) %>%
+        unique() %>%
         unlist()
       
       q.bcl <- rnx.omnisheet %>%
-        select(bcl_folder) %>% 
-        unique() %>% 
+        select(bcl_folder) %>%
+        unique() %>%
         unlist()
       
-      q.loaded <- rnx.omnisheet %>% 
-        filter(library_type == 'hto') %>% 
-        group_by(reaction_id) %>% 
-        summarise(loaded_cells_rnx = sum(loaded_cells)) %>% 
-        filter(reaction_id == q.rnx) %>% 
-        select(loaded_cells_rnx) %>% 
+      q.loaded <- rnx.omnisheet %>%
+        filter(library_type == 'hto') %>%
+        group_by(reaction_id) %>%
+        summarise(loaded_cells_rnx = sum(loaded_cells)) %>%
+        filter(reaction_id == q.rnx) %>%
+        select(loaded_cells_rnx) %>%
         unlist()
       
-      q.lib.hto <- lib.tib %>% 
-        filter(library_type == 'hto') %>% 
-        select(library_id) %>% 
+      q.lib.hto <- lib.tib %>%
+        filter(library_type == 'hto') %>%
+        select(library_id) %>%
         unlist()
       
       demult.stats.path <- file.path(
@@ -778,18 +776,16 @@ make_summary_table <- function(){
         snakemake@config[['scop_id']],
         snakemake@config[['fastq_path']],
         q.bcl,
-        bcl.convert.version,
-        'Reports')
-        
+        'metadata')
+      
       demultiplex.stats <- read_csv(file.path(demult.stats.path,
-                                              'Demultiplex_Stats.csv'))
+                                              'read-demultiplexing.csv'))
       
       q.reads <- demultiplex.stats %>%
-        group_by(SampleID) %>% 
-        summarise(total_reads = sum(`# Reads`)) %>%
-        filter(SampleID == q.index.hto) %>% 
-        select(total_reads) %>% 
-        unlist()
+        filter(index == q.index.10x) %>%
+        select(Reads) %>%
+        unlist() %>%
+        sum()
       
       mat.stats.path <- file.path(
         project.path,
@@ -868,11 +864,11 @@ make_summary_table <- function(){
                                     'Negative %','Doublet %','Singlet %',
                                     'Negative %','Doublet %','Singlet %'),
           format.args = list(big.mark = ','),
-          booktabs = T) %>% 
+          booktabs = T) %>%
       row_spec(0, color = '#dedede', angle = 25,align = 'center', font_size = '12') %>%
       kable_material_dark(full_width = F, html_font = 'helvetica', lightable_options = 'basic') %>%
       column_spec(1, bold = T, color = '#dedede') %>%
-      column_spec(column = c(4,5,6,7,8,9,10,18,19,20,21,22,23,24,25,26), color = '#ffbd69') %>% 
+      column_spec(column = c(4,5,6,7,8,9,10,18,19,20,21,22,23,24,25,26), color = '#ffbd69') %>%
       column_spec(column = c(11,12,13,14,15,16,17), color = '#adffff') %>%
       add_header_above(c(' ' = 1,
                          'Cells' = 1,
@@ -880,7 +876,7 @@ make_summary_table <- function(){
                          'Cells' = 2, 'Reads' = 3, 'UMIs' = 2,
                          'Cells' = 2, 'Reads' = 3, 'UMIs' = 2,
                          'Cells' = 3, 'Reads (HTO)' = 3, 'Reads (RNA)' = 3),
-                       color = '#dedede') %>% 
+                       color = '#dedede') %>%
       add_header_above(c(' ' = 1,
                          'Loaded' = 1,
                          'Sequenced' = 1,
@@ -889,13 +885,13 @@ make_summary_table <- function(){
                          'Classification proportions' = 9),
                        align = 'center',
                        bold = T, color = c('#dedede','#dedede','#dedede',
-                                                    '#ffbd69','#adffff','#ffbd69')) %>% 
-                                                      add_header_above(c('Summary stats (HTO expression)' = 4,
-                                                                         ' ' = 22),
-                                                                       align = 'center',
-                                                                       color = '#dedede',
-                                                                       font_size = 20,
-                                                                       bold = T) %>% 
+                                           '#ffbd69','#adffff','#ffbd69')) %>%
+      add_header_above(c('Summary stats (HTO expression)' = 4,
+                         ' ' = 22),
+                       align = 'center',
+                       color = '#dedede',
+                       font_size = 20,
+                       bold = T) %>%
       save_kable(file = file.path(summary.path,'hto_summary.html'), self_contained = T)
   }
   
@@ -1091,8 +1087,8 @@ make_plot_htoVlnGlobal <- function(meta.data, rnx.name) {
     theme(legend.position = 'none',
           axis.text.x = element_text(angle = 22.5)) +
     ggtitle(rnx.name)
-
-  p <- patchwork::wrap_plots(p)  
+  
+  p <- patchwork::wrap_plots(p)
   return(p)
 }
 
@@ -1343,14 +1339,14 @@ make_plot_umap_class <- function(meta.data, rnx.name) {
 # Data
 bc.df.ref <- read.csv('data/bc-df-ref.csv')
 
-demux_counts <- function(stats_folder, 
+demux_counts <- function(stats_folder,
                          this_sequencing_id,
                          config = snakemake@config) {
   stats_file <- file.path(stats_folder, "Demultiplex_Stats.csv")
   if (!file.exists(stats_file)) {
     stop(stats_file, " does not exist.")
   }
-  reads <- readr::read_csv(stats_file, 
+  reads <- readr::read_csv(stats_file,
                            col_select = c(
                              "Lane"          = "Lane",
                              "index"         = "SampleID",
@@ -1358,7 +1354,7 @@ demux_counts <- function(stats_folder,
                              "Perfect Index" = "# Perfect Index Reads",
                              "One Mismatch"  = "# One Mismatch Index Reads",
                              "Two Mismatch"  = "# Two Mismatch Index Reads"
-                           ), 
+                           ),
                            col_types = c(
                              "Lane"          = readr::col_character(),
                              "SampleID"      = readr::col_character(),
@@ -1368,8 +1364,8 @@ demux_counts <- function(stats_folder,
                              "Two Mismatch"  = readr::col_integer())
   )
   
-  types <- merge_sheets("reaction2library", "library_sheet", 
-                        "library2sequencing", "sequencing_sheet", 
+  types <- merge_sheets("reaction2library", "library_sheet",
+                        "library2sequencing", "sequencing_sheet",
                         config = config) |>
     dplyr::filter(sequencing_id == this_sequencing_id) |>
     dplyr::select(c("reaction_id", "library_type", "index"))
@@ -1385,11 +1381,11 @@ plot_demux_stats <- function(demux_stats) {
   
   plot_data <- demux_stats |>
     dplyr::select(-c("Reads")) |>
-    tidyr::pivot_longer(cols = c("Perfect Index", 
-                                 "One Mismatch", 
+    tidyr::pivot_longer(cols = c("Perfect Index",
+                                 "One Mismatch",
                                  "Two Mismatch")) |>
-    dplyr::mutate(name = factor(name, levels = c("Two Mismatch", 
-                                                 "One Mismatch", 
+    dplyr::mutate(name = factor(name, levels = c("Two Mismatch",
+                                                 "One Mismatch",
                                                  "Perfect Index"))) |>
     dplyr::mutate(index = ifelse(index == "Undetermined", "", index)) |>
     dplyr::filter(value > 0)
@@ -1414,8 +1410,8 @@ plot_demux_stats <- function(demux_stats) {
   fill_scale <- scale_fill_manual(
     name = element_blank(),
     values = c(
-      "Perfect Index" = cols[1], 
-      "One Mismatch"  = cols[2], 
+      "Perfect Index" = cols[1],
+      "One Mismatch"  = cols[2],
       "Two Mismatch"  = cols[3]
     ),
     breaks = c(
@@ -1436,7 +1432,7 @@ plot_demux_stats <- function(demux_stats) {
 }
 
 theme_comuneqaid <- function(base_size = 10, base_family = "Helvetica") {
-  theme_bw(base_size = base_size, base_family = base_family) 
+  theme_bw(base_size = base_size, base_family = base_family)
 }
 
 merge_sheets <- function(..., config = snakemake@config) {

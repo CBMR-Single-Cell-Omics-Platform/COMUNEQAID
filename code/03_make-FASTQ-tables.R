@@ -15,6 +15,7 @@ project.path <-
   file.path(snakemake@config[['project_path']],
             snakemake@config[['scop_id']])
 
+
 fastq_path <- file.path(project.path,
                         snakemake@config[['fastq_path']]
 )

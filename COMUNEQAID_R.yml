@@ -15,7 +15,7 @@ dependencies:
   - bioconductor-scran
   - r-sctransform
   - bioconductor-dropletutils
-  - r-matrix
+  - r-matrix=1.6-1                  # obs: atm 1.6-2 clashes with irlba (used for uwot): "Error in irlba::irlba(A): function 'as_cholmod_sparse' not provided by package 'Matrix'"
   - r-mclust
   - r-diptest
   - bioconductor-annotationdbi
@@ -29,5 +29,6 @@ dependencies:
   - r-devtools
   - r-rjson
   - r-intrinsicdimension
+  - r-hdf5r
   - salmon>=1.9.0
   - alevin-fry>=0.8.0

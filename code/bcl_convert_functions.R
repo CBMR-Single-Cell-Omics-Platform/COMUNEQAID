@@ -174,7 +174,7 @@ prepare_reference <- function(data_folder = "data/") {
   reference
 }
 
-#' Title
+#' Guess index ID
 #'
 #' @param idx string, indexes sequenced
 #' @param reference_seq known indexes

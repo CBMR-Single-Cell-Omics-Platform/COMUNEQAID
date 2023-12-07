@@ -128,6 +128,8 @@ def bclconvert(scop_id, com_id, sequencing_id, bcl_folder, override_cycles, fast
          f'--bcl-num-compression-threads {threads} '
          f'--bcl-num-decompression-threads {ceil(threads * 0.5)} '
          f'--bcl-input-directory {bcl_path} '
+         '--strict-mode true '
+         '--bcl-only-matched-reads true '
          f'--force '
          f'2>&1 | tee {log_file} -a'
      )

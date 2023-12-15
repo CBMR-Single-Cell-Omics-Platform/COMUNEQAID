@@ -276,15 +276,31 @@ call_droplets <- function(counts, protocol, cutoff) {
   return(list(valid.bcs, bc.df, bc.annot))
 }
 
-HTODemux.mcl <- function(object, assay = "HTO", q_l = 1, q_h = 0.005, seed = 42){
-  # A function to find the threshold for each hastag, the P, and singlet, doublets and negative.
-  # The input is the HTO data matrix (normalized across cells).
-  
+HTODemux.mcl <- function(object, assay = "HTO", q_l = 1, q_h = 0.001, seed = 42){
+  # Adjust the function to handle q_l and q_h as vectors
   assay <- assay %||% DefaultAssay(object = object)
   data <- GetAssayData(object = object, assay = assay, slot = 'data')
-  hto.cutoff.metadata = data.frame(cut_off = future.apply::future_apply(data,1,function(x) select_hash_cutoff_mcl(x, q_l = q_l, q_h = q_h), future.seed = T))
+  
+  if (length(q_l) == 1 && length(q_h) == 1) {
+    hto.cutoff.metadata = data.frame(cut_off = future.apply::future_apply(data,1,function(x) select_hash_cutoff_mcl(x, q_l = q_l, q_h = q_h), future.seed = T))
+    hto_mcl.p = t(apply(data,1,function(x) hash_mcl_p(x, seed = seed, q_l = q_l, q_h = q_h)))
+  }
+  if (length(q_l) > 1 && length(q_h) > 1) {
+    
+    feature_indices <- seq_len(nrow(data))
+    
+    hto.cutoff.metadata <- data.frame('cut_off' = numeric())
+    hto_mcl.p <- data
+    
+    for (idx in feature_indices) {
+      hto.cutoff.metadata[idx,] <- select_hash_cutoff_mcl(data[idx,], q_l[idx], q_h[idx])
+      hto_mcl.p[idx,] <- hash_mcl_p(data[idx,], q_l[idx], q_h[idx])
+    }
+    rownames(hto.cutoff.metadata) <- rownames(data)
+  }
+  
   hto.cutoff.metadata$Multi_modal = apply(data,1,function(x) is_multimodal(x))
-  hto_mcl.p = t(apply(data,1,function(x) hash_mcl_p(x, seed = seed, q_l = q_l, q_h = q_h)))
+  print(hto.cutoff.metadata)
   discrete <- data
   discrete[discrete > 0] <- 0
   for (iter in rownames(x = data)) {

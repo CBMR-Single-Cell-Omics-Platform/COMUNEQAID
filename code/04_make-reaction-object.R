@@ -63,7 +63,8 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
                       'tidyverse','scater','scran','sctransform',
                       'DropletUtils','Matrix','mclust','intrinsicDimension')
 ) %dopar% {
-# for (rnx.i in rnx.sheet[["reaction_id"]]) {
+
+#for (q.rnx in rnx.sheet[["reaction_id"]]) {
   
   ####################  Prep processing of rnx i  ####################
   # Reaction vars
@@ -72,12 +73,18 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
   q.protocol <- rnx.tib[['seq_type']]
   q.cutoff <- rnx.tib[['cutoff']]
   q.organism <- rnx.tib[['align']]
-  q.low <- filter(as_tibble(snakemake@config[['reaction_sheet']]), reaction_id == q.rnx)[['quantile_low']]#[[1]]
-  q.high <- filter(as_tibble(snakemake@config[['reaction_sheet']]), reaction_id == q.rnx)[['quantile_high']]#[[1]]
   
-  if (is.null(q.low) && is.null(q.high)) {
-      q.low <- 1
-      q.high <- 0.01
+  q.low <- filter(as_tibble(snakemake@config[['reaction_sheet']]), reaction_id == q.rnx)[['quantile_low']][[1]]
+  q.high <- filter(as_tibble(snakemake@config[['reaction_sheet']]), reaction_id == q.rnx)[['quantile_high']][[1]]
+  
+  if (is.character(q.low) & is.character(q.high)) {
+    q.low <- as.numeric(unlist(strsplit(q.low, " ")))
+    q.high <- as.numeric(unlist(strsplit(q.high, " ")))
+  }
+  
+  if (is.null(q.low) & is.null(q.high)) {
+    q.low <- 1
+    q.high <- 0.01
   }
   
   rnx.path <- file.path(
@@ -347,8 +354,8 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
       cat('#\t..\tdemultiplexing HTOs..\n')
       
       # Setting the threshold based on the quantiles of the negative and the positive clusters.
-      cat('#\t..\t\tq_l = ',q.low,'\n',
-          '#\t..\t\tq_h = ',q.high,'\n',
+      cat('#\t..\t\tq.low = ',q.low,'\n',
+          '#\t..\t\tq.high = ',q.high,'\n',
           sep = '')
       seur.full <- HTODemux.mcl(seur.full, q_l = q.low, q_h = q.high)
       
@@ -357,8 +364,6 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
           '#\t..\t\tsinglets:\t',table(seur.full[['HTO_globalClass']])[names(table(seur.full[['HTO_globalClass']])) == 'Singlet'],'\n',
           sep = '')
       
-      
-      tmp.assay <- DefaultAssay(object = seur.full)
       tmp.data <- GetAssayData(object = seur.full, assay = 'HTO', slot = 'data')
       hto.data.wide = data.frame(t(tmp.data))
       colnames(hto.data.wide) <- gsub("[.]", "-", colnames(hto.data.wide), perl = T)
@@ -366,7 +371,22 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
       hto.data.long <- rename(hto.data.long, 'CB' = 'rn')
       hto.data.long[, sample_id := as.character(sample_id)]
       
-      hto_mcl.cutoff = data.table::data.table(cut_off = future.apply::future_apply(tmp.data,1,function(x) select_hash_cutoff_mcl(x, q_l = q.low, q_h = q.high), future.seed = T), hto_name = colnames(hto.data.wide)[-1], key = "hto_name")
+      if (length(q.low) == 1 && length(q.high) == 1) {
+        hto_mcl.cutoff = data.table::data.table(cut_off = future.apply::future_apply(tmp.data,1,function(x) select_hash_cutoff_mcl(x, q_l = q.low, q_h = q.high), future.seed = T), hto_name = colnames(hto.data.wide)[-1], key = "hto_name")
+      }
+      
+      if (length(q.low) > 1 && length(q.high) > 1) {
+        feature_indices <- seq_len(nrow(tmp.data))
+        
+        hto.cutoff.metadata <- data.frame('cut_off' = numeric())
+        
+        for (idx in feature_indices) {
+          hto.cutoff.metadata[idx,] <- select_hash_cutoff_mcl(tmp.data[idx,], q.low[idx], q.high[idx])
+        }
+        
+        hto_mcl.cutoff = data.table::data.table(hto.cutoff.metadata, hto_name = colnames(hto.data.wide)[-1], key = "hto_name")
+      }
+      
       hto.data.long[, above_cutoff := expression > hto_mcl.cutoff[sample_id, cut_off]]
       
       

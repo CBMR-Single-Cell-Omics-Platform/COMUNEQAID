@@ -1062,13 +1062,14 @@ make_plot_barcodeRanks <- function(df, annot, ref, rnx.name, rnx.type) {
   return(combined)
 }
 
-make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata, rnx.name, q_l = 1, q_h = 0.001) {
+make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata, q.rnx, q_l, q_h) {
   
   hto.cutoff.metadata[['hto']] <- hto.cutoff.metadata[['hto_name']]
   
   p <- ggplot(hto.sample.calling.metadata, aes(x = expression, fill = above_cutoff)) +
-    geom_histogram(bins = 100) +
-    facet_wrap(~sample_id, scales = 'free',ncol = 3) +
+    geom_histogram(bins = 75) +
+    #facet_wrap(~sample_id, scales = 'free',ncol = 3) +
+    facet_wrap(~sample_id,ncol = 3) +
     xlab('UMI counts (CLR-norm)') +
     ylab('Cell barcode frequency') +
     scale_y_log10(labels = exponent_format()) +
@@ -1076,7 +1077,7 @@ make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata
                       labels = c('HTO negative','HTO positive'),
                       values = c(my.cols[['Uncalled']],my.cols[['Called']]),
                       guide = guide_legend(override.aes = list(fill = c(my.cols[['Uncalled']],my.cols[['Called']])))) +
-    ggtitle(rnx.name, subtitle = paste0('Q_negative = ', q_l, '; Q_positive = ', q_h)) +
+    ggtitle(paste0('Reaction:\t', q.rnx), subtitle = paste('q_low: ', paste(q_l, collapse = ' '), ' q_high: ', paste(q_h, collapse = ' '))) +
     theme_minimal(base_size = base.size) +
     theme(text = element_text(family = plotting.font), legend.position = 'bottom')
   

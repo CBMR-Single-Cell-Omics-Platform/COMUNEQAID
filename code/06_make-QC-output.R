@@ -201,7 +201,10 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   hto.sample.calling.metadata <- read.csv(file.path(mat.stats.path,'hto_sample_calling_metadata.csv'))
   hto.cutoff.metadata <- read.csv(file.path(mat.stats.path,'hto_cutoff_metadata.csv'))
   
-  p.hto.barcode.calling <- make_plot_htoThresh(hto.sample.calling.metadata,hto.cutoff.metadata,rnx)
+  q.low <- filter(as_tibble(snakemake@config[['reaction_sheet']]), reaction_id == rnx)[['quantile_low']]
+  q.high <- filter(as_tibble(snakemake@config[['reaction_sheet']]), reaction_id == rnx)[['quantile_high']]
+  
+  p.hto.barcode.calling <- make_plot_htoThresh(hto.sample.calling.metadata, hto.cutoff.metadata, rnx, q_l = q.low, q_h = q.high)
   
   cat('#\t..\t\t- \"02_antibody-calling.png\"\n')
   ggsave(filename = '02_antibody-calling.png',

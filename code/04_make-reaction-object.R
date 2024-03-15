@@ -119,7 +119,7 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
     'seurat_velocity_filtered.rds')
   
   if (file.exists(unfiltered.file) &
-      file.exists(filtered.file)){
+      file.exists(filtered.file)) {
     
     message <- paste0('################################################################################\n',
                       'Seurat objects already exists - skipping reaction_id: ',q.rnx,'\n',
@@ -134,7 +134,7 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
   }
   
   if (!file.exists(unfiltered.file) &
-      !file.exists(filtered.file)){
+      !file.exists(filtered.file)) {
     dir.create(rnx.path, recursive = T, showWarnings = F)
     dir.create(mat.stats.path, recursive = T, showWarnings = F)
     
@@ -164,7 +164,7 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
         select(bcl_folder) %>% 
         unlist()
       
-      mat.files.hto <-file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,q.rnx,q.library.hto,'res')
+      mat.files.hto <- file.path(project.path,snakemake@config[['out_path']],snakemake@config[['com_id']],salmon.version.alevin.fry.version,q.rnx,q.library.hto,'res')
       if (!file.exists(mat.files.hto)) { stop('Not able to locate quants_mat.gz (HTO)')}
     }
     
@@ -412,46 +412,55 @@ foreach(q.rnx = rnx.sheet[["reaction_id"]],
           sep = '')
       
       # identify intra-hash doublets
-      cat('#\tidentifying intra-HTO doublets..\n',
-          '#\n',
-          sep = '')
+      seur.full[['HTO_doubletBool']] <- if_else(seur.full[['sampleID']] == 'Doublet', true = T, false = F)
       
-      cat('#\t..\tconverting to SingleCellExperiment..\n')
-      sce.full <- as.SingleCellExperiment(seur.full)
-      
-      cat('#\t..\tlog-normalizing rna assay..\n')
-      sce.full <- logNormCounts(sce.full)
-      
-      cat('#\t..\tmodeling per-gene variance..\n')
-      dec.hash <- modelGeneVar(sce.full)
-      
-      cat('#\t..\trunning PCA on top 1000 variable genes..\n')
-      top.hash <- getTopHVGs(dec.hash, n = 1000)
-      sce.full <- runPCA(sce.full, subset_row = top.hash, ncomponents = 20)
-      sce.full[['HTO_doubletBool']] <- if_else(sce.full[['sampleID']] == 'Doublet', true = T, false = F)
-      
-      # Recovering the intra-sample doublets:
-      cat('#\t..\trecovering intra-sample doublets..\n')
-      hashed.doublets <- scDblFinder::recoverDoublets(sce.full,
-                                                      use.dimred = 'PCA',
-                                                      doublets = sce.full[['HTO_doubletBool']],
-                                                      samples = table(sce.full[['sampleID']]))
-      
-      sce.full[['RNA_doubletNeighborProportion']] <- hashed.doublets[['proportion']]
-      sce.full[['RNA_recoveredDoubletBool']] <- hashed.doublets[['predicted']]
-      
-      cat('#\t..\trecovering doublet neighbors..\n')
-      sce.full[['RNA_doubletNeighborBool']] <- dub_cutoff(sce.full)
-      
-      seur.full[['HTO_doubletBool']] <- sce.full[['HTO_doubletBool']]
-      seur.full[['RNA_recoveredDoubletBool']] <- sce.full[['RNA_recoveredDoubletBool']]
-      seur.full[['RNA_doubletNeighborBool']] <- sce.full[['RNA_doubletNeighborBool']]
-      seur.full[['RNA_doubletNeighborProportion']] <- sce.full[['RNA_doubletNeighborProportion']]
-      
-      cat('#\t..\n',
-          '#\t..done\n',
-          '#\n',
-          sep = '')
+      if (TRUE %in% seur.full[[]][['HTO_doubletBool']]) {
+        cat('#\tidentifying intra-HTO doublets..\n',
+            '#\n',
+            sep = '')
+        
+        cat('#\t..\tconverting to SingleCellExperiment..\n')
+        sce.full <- as.SingleCellExperiment(seur.full)
+        
+        cat('#\t..\tlog-normalizing rna assay..\n')
+        sce.full <- logNormCounts(sce.full)
+        
+        cat('#\t..\tmodeling per-gene variance..\n')
+        dec.hash <- modelGeneVar(sce.full)
+        
+        cat('#\t..\trunning PCA on top 1000 variable genes..\n')
+        top.hash <- getTopHVGs(dec.hash, n = 1000)
+        sce.full <- runPCA(sce.full, subset_row = top.hash, ncomponents = 20)
+        
+        # Recovering the intra-sample doublets:
+        cat('#\t..\trecovering intra-sample doublets..\n')
+        hashed.doublets <- scDblFinder::recoverDoublets(sce.full,
+                                                        use.dimred = 'PCA',
+                                                        doublets = sce.full[['HTO_doubletBool']],
+                                                        samples = table(sce.full[['sampleID']]))
+        
+        sce.full[['RNA_doubletNeighborProportion']] <- hashed.doublets[['proportion']]
+        sce.full[['RNA_recoveredDoubletBool']] <- hashed.doublets[['predicted']]
+        
+        cat('#\t..\trecovering doublet neighbors..\n')
+        sce.full[['RNA_doubletNeighborBool']] <- dub_cutoff(sce.full)
+        
+        seur.full[['HTO_doubletBool']] <- sce.full[['HTO_doubletBool']]
+        seur.full[['RNA_recoveredDoubletBool']] <- sce.full[['RNA_recoveredDoubletBool']]
+        seur.full[['RNA_doubletNeighborBool']] <- sce.full[['RNA_doubletNeighborBool']]
+        seur.full[['RNA_doubletNeighborProportion']] <- sce.full[['RNA_doubletNeighborProportion']]
+        
+        cat('#\t..\n',
+            '#\t..done\n',
+            '#\n',
+            sep = '')
+      }
+        
+      if (TRUE %!in% seur.full[[]][['HTO_doubletBool']]) {
+        seur.full[['RNA_recoveredDoubletBool']] <- FALSE
+        seur.full[['RNA_doubletNeighborBool']] <- FALSE
+        seur.full[['RNA_doubletNeighborProportion']] <- 0
+      }
     }
     
     if ('hto' %!in% lib.tib[['library_type']]) {

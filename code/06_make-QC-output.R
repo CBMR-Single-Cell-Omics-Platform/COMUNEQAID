@@ -110,6 +110,8 @@ for (seq.id in seq.sheet[["sequencing_id"]]) {
   
   bcl.folder <- filter(seq.sheet, sequencing_id == seq.id)[["bcl_folder"]]
   
+  dir.create(file.path(plot.path,bcl.folder), recursive = T, showWarnings = F)
+  
   cat('#\t..\t',bcl.folder,':\n',
       sep = '')
   
@@ -216,7 +218,7 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   
   ### HTO expression
   #### Global classification
-  seurat.unfiltered.metadata <- read.csv(file.path(mat.stats.path,'seurat_unfiltered_metadata.csv'), colClasses=c("sampleID"="character"))
+  seurat.unfiltered.metadata <- read.csv(file.path(mat.stats.path,'seurat_unfiltered_metadata.csv'), colClasses=c("sampleID" = "character"))
   
   p.violin.global <- make_plot_htoVlnGlobal(seurat.unfiltered.metadata, rnx)
   
@@ -350,7 +352,7 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
   
   # Summarize all
   ## Violin
-  seurat.filtered.metadata <- read.csv(file.path(mat.stats.path,'seurat_filtered_metadata.csv'), colClasses=c("sampleID"="character"))
+  seurat.filtered.metadata <- read.csv(file.path(mat.stats.path,'seurat_filtered_metadata.csv'), colClasses=c("sampleID" = "character"))
   
   
   p.rna.violin.sample <- make_plot_rnaVln(seurat.filtered.metadata, rnx)
@@ -501,7 +503,8 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
                               y = featDump.hto$DeduplicatedReads,
                               col = tmpdf)) +
       geom_point() + scale_x_log10() + scale_y_log10() +
-      scale_color_manual(values = c(my.cols[['Doublet']],my.cols[['Negative']],my.cols[['Singlet']],my.cols[['Uncalled']])) +
+      scale_color_manual(values = c(my.cols[['Doublet']],my.cols[['Negative']],my.cols[['Singlet']],my.cols[['Uncalled']]),
+                         limits = c('Doublet','Negative','Singlet','Uncalled')) +
       annotation_logticks() +
       labs(x = 'UMI counts (RNA)',
            y = 'UMI counts (HTO)',
@@ -524,6 +527,8 @@ for (rnx in snakemake@config[['reaction_sheet']][['reaction_id']]) {
 if (length(rnx.sheet[['reaction_id']]) > 1) {
   
   rnx <- 'aggregated'
+  
+  dir.create(file.path(plot.path,rnx), recursive = T, showWarnings = F)
   
   mat.stats.path <- file.path(
     project.path,

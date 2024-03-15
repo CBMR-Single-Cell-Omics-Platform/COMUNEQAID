@@ -161,12 +161,12 @@ call_droplets <- function(counts, protocol, cutoff) {
     force.mod <- F
   }
   
-  if(cutoff == 'correct') {
+  if (cutoff == 'correct') {
     skip.mod <- F
     force.mod <- T
   }
   
-  if(cutoff == 'skip') {
+  if (cutoff == 'skip') {
     skip.mod <- T
     force.mod <- F
   }
@@ -353,7 +353,7 @@ process_seur <- function(seur, n.pca.dims = 50, assay = 'RNA', verbose = F) {
                      features = rownames(seur[['HTO']]@counts),
                      reduction.name = 'hto.pca',
                      reduction.key = 'htoPC_',
-                     approx=FALSE,
+                     approx = FALSE,
                      verbose = verbose)
       
       cat('#\t..\t\trunning tSNE..\n')
@@ -369,7 +369,7 @@ process_seur <- function(seur, n.pca.dims = 50, assay = 'RNA', verbose = F) {
                       dims = seq(rownames(seur@assays$HTO)),
                       reduction.name = 'hto.umap',
                       reduction.key = 'htoUMAP_',
-                      metric='correlation',
+                      metric = 'correlation',
                       verbose = verbose)
     }
   })
@@ -1087,15 +1087,20 @@ make_plot_htoThresh <- function(hto.sample.calling.metadata, hto.cutoff.metadata
 
 make_plot_htoVlnGlobal <- function(meta.data, rnx.name) {
   
+  meta.data[['HTO_globalClass']] <- factor(meta.data[['HTO_globalClass']],
+                                           levels = c('Doublet','Negative','Singlet'))
+  
+  tmp.color.palette <- c(my.cols[['Doublet']],
+                         my.cols[['Negative']],
+                         my.cols[['Singlet']])
   p <- ggplot(meta.data,
               aes(x = HTO_globalClass,
                   y = nCount_HTO,
                   fill = HTO_globalClass)) +
     geom_violin() +
     geom_jitter(alpha = .25) +
-    scale_fill_manual(values = c(my.cols[['Doublet']],
-                                 my.cols[['Negative']],
-                                 my.cols[['Singlet']])) +
+    scale_fill_manual(values = tmp.color.palette,
+                      limits = levels(meta.data[['HTO_globalClass']])) +
     scale_y_log10(labels = exponent_format()) +
     annotation_logticks(sides = 'l') +
     labs(x = 'HTO classification (Global)',
@@ -1152,7 +1157,8 @@ make_plot_htotsne <- function(meta.data, choosen.class = 'Individual', rnx.name)
     
     p <- ggplot(meta.data) +
       geom_point(aes(x = HTO_tsne1, y = HTO_tsne2, col = sampleID, alpha = .25)) +
-      scale_color_manual(values = tmp.color.palette) +
+      scale_color_manual(values = tmp.color.palette,
+                         limits = levels(meta.data[['sampleID']])) +
       labs(x = 'tSNE 1', y = 'tSNE 2', color = 'HTO classification') +
       theme_minimal(base_size = base.size) +
       guides(alpha = 'none') +
@@ -1162,13 +1168,17 @@ make_plot_htotsne <- function(meta.data, choosen.class = 'Individual', rnx.name)
   
   if (choosen.class == 'Global') {
     
+    meta.data[['HTO_globalClass']] <- factor(meta.data[['HTO_globalClass']],
+                                             levels = c('Doublet','Negative','Singlet'))
+    
     tmp.color.palette <- c(my.cols[['Doublet']],
                            my.cols[['Negative']],
                            my.cols[['Singlet']])
     
     p <- ggplot(meta.data) +
       geom_point(aes(x = HTO_tsne1, y = HTO_tsne2, col = HTO_globalClass, alpha = .25)) +
-      scale_color_manual(values = tmp.color.palette) +
+      scale_color_manual(values = tmp.color.palette,
+                         limits = levels(meta.data[['HTO_globalClass']])) +
       labs(x = 'tSNE 1', y = 'tSNE 2', color = 'HTO classification') +
       theme_minimal(base_size = base.size) +
       guides(alpha = 'none') +

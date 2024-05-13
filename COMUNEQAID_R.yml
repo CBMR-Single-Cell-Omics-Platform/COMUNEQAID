@@ -32,3 +32,5 @@ dependencies:
   - r-hdf5r
   - salmon>=1.9.0
   - alevin-fry>=0.8.0
+  - r-glmGamPoi
+  - r-plotly

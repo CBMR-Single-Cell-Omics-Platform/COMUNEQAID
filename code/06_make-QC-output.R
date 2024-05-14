@@ -7,6 +7,8 @@ suppressPackageStartupMessages({
   library(Seurat)
   library(viridis)
   library(kableExtra)
+  library(plotly)
+  library(data.table)
 })
 
 # Shared functions
@@ -226,16 +228,34 @@ for (rnx in snakemake@config[["reaction_sheet"]][["reaction_id"]]) {
     dpi = "retina"
   )
 
+  p.celular.barcode.calling.interactive <- make_plotly_barcodeRanks(
+    df.cell.barcode.stats,
+    df.rna.cell.barcode.calling.metadata,
+    bc.df.ref,
+    rnx,
+    snakemake@config[["reaction_sheet"]][["seq_type"]][snakemake@config[["reaction_sheet"]][["reaction_id"]] == rnx]
+  )
+
+  html_path_rna <- file.path(plot.path, rnx, "01_barcode-calling.html")
+  htmlwidgets::saveWidget(
+    p.celular.barcode.calling.interactive,
+    html_path_rna
+  )
+
+  # Read the HTML file
+  html_content <- fread(html_path_rna, header = FALSE, sep = "\n") # Reading as a single column per line
+  html_content$V1 <- vapply(html_content$V1, transform_numbers, FUN.VALUE = character(1))
+  fwrite(html_content, file = html_path_rna, quote = FALSE, sep = "\n", col.names = FALSE)
+
   # Cell calling (HTO)
   ## Inter-HTO calling
   ### Individual HTO distributions
   hto.sample.calling.metadata <- read.csv(file.path(mat.stats.path, "hto_sample_calling_metadata.csv"))
   hto.cutoff.metadata <- read.csv(file.path(mat.stats.path, "hto_cutoff_metadata.csv"))
 
-  q.low <- filter(as_tibble(snakemake@config[["reaction_sheet"]]), reaction_id == rnx)[["quantile_low"]]
-  q.high <- filter(as_tibble(snakemake@config[["reaction_sheet"]]), reaction_id == rnx)[["quantile_high"]]
+  p.hto.barcode.calling <- make_plot_htoThresh(hto.sample.calling.metadata, hto.cutoff.metadata, rnx)
 
-  p.hto.barcode.calling <- make_plot_htoThresh(hto.sample.calling.metadata, hto.cutoff.metadata, rnx, q_l = q.low, q_h = q.high)
+  p.hto.barcode.calling.interactive <- make_plotly_htoThresh(hto.sample.calling.metadata, hto.cutoff.metadata, rnx)
 
   cat('#\t..\t\t- \"02_antibody-calling.png\"\n')
   ggsave(
@@ -245,6 +265,12 @@ for (rnx in snakemake@config[["reaction_sheet"]][["reaction_id"]]) {
     width = 6,
     height = 5,
     dpi = "retina"
+  )
+
+  html_path_hto <- file.path(plot.path, rnx, "02_antibody-calling.html")
+  htmlwidgets::saveWidget(
+    p.hto.barcode.calling.interactive,
+    html_path_hto
   )
 
   ### HTO expression

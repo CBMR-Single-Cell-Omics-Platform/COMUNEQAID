@@ -303,7 +303,7 @@ HTODemux.mcl <- function(object, assay = "HTO", q_l = 1, q_h = 0.001, cutoff = F
     hto_mcl.p <- t(apply(data, 1, function(x) hash_mcl_p(x, seed = seed, q_l = q_l, q_h = q_h)))
   }
   if (is.double(cutoff)) {
-    hto.cutoff.metadata <- data.frame("cut_off" = log10(cutoff))
+    hto.cutoff.metadata <- data.frame("cut_off" = cutoff)
     hto_mcl.p <- data
 
     rownames(hto.cutoff.metadata) <- rownames(data)
@@ -832,6 +832,11 @@ make_summary_table <- function() {
         select(loaded_cells_rnx) %>%
         unlist()
 
+      q.lib.10x <- lib.tib %>%
+        filter(library_type == "10x") %>%
+        select(library_id) %>%
+        unlist()
+
       q.lib.hto <- lib.tib %>%
         filter(library_type == "hto") %>%
         select(library_id) %>%
@@ -851,7 +856,7 @@ make_summary_table <- function() {
       ))
 
       q.reads <- demultiplex.stats %>%
-        filter(index == q.index.10x) %>%
+        filter(index == q.index.hto) %>%
         select(Reads) %>%
         unlist() %>%
         sum()
@@ -872,23 +877,26 @@ make_summary_table <- function() {
       valid.cbs <- bc.df[["Barcode"]][bc.df[["State"]] == "Called"]
 
       # Read featureDump.txt
+      mat.files.rna <- file.path(project.path, snakemake@config[["out_path"]], snakemake@config[["com_id"]], salmon.version.alevin.fry.version, q.rnx, q.lib.10x, "res")
       mat.files.hto <- file.path(project.path, snakemake@config[["out_path"]], snakemake@config[["com_id"]], salmon.version.alevin.fry.version, q.rnx, q.lib.hto, "res")
-      featDump.hto <- suppressMessages(read_delim(file.path(mat.files.hto, "featureDump.txt"), delim = "\t"))
+      feature.dump.10x <- suppressMessages(read_delim(file.path(mat.files.10x, "featureDump.txt"), delim = "\t"))
+      feature.dump.hto <- suppressMessages(read_delim(file.path(mat.files.hto, "featureDump.txt"), delim = "\t"))
+      q.10x.called.reads <- sum(feature.dump.10x[feature.dump.10x[["CB"]] %in% valid.cbs, ][["MappedReads"]])
 
       stats.hto[["Reads (Raw)"]] <- q.reads
       stats.hto[["Cells (Loaded)"]] <- q.loaded
 
       # CALLED CELLS - BARCODE RANKS
       # HTO
-      stats.hto[["Cells (Called)"]] <- length(unique(featDump.hto[featDump.hto[["CB"]] %in% valid.cbs, ][["CB"]]))
+      stats.hto[["Cells (Called)"]] <- length(unique(feature.dump.hto[feature.dump.hto[["CB"]] %in% valid.cbs, ][["CB"]]))
       stats.hto[["Cells % Loaded (Called)"]] <- paste(as.character(round(stats.hto[["Cells (Called)"]] / stats.hto[["Cells (Loaded)"]] * 100, 1)), "%")
 
-      stats.hto[["Reads (Called)"]] <- sum(featDump.hto[featDump.hto[["CB"]] %in% valid.cbs, ][["MappedReads"]])
+      stats.hto[["Reads (Called)"]] <- sum(feature.dump.hto[feature.dump.hto[["CB"]] %in% valid.cbs, ][["MappedReads"]])
       stats.hto[["Reads % Raw (Called)"]] <- paste(as.character(round(stats.hto[["Reads (Called)"]] / stats.hto[["Reads (Raw)"]] * 100, 1)), "%")
-      stats.hto[["Reads/Cell (Called)"]] <- round(median(featDump.hto[featDump.hto[["CB"]] %in% valid.cbs, ][["MappedReads"]]))
+      stats.hto[["Reads/Cell (Called)"]] <- round(median(feature.dump.hto[feature.dump.hto[["CB"]] %in% valid.cbs, ][["MappedReads"]]))
 
-      stats.hto[["UMIs (Called)"]] <- round(sum(featDump.hto[featDump.hto[["CB"]] %in% valid.cbs, ][["DeduplicatedReads"]]))
-      stats.hto[["UMIs/Cell (Called)"]] <- round(median(featDump.hto[featDump.hto[["CB"]] %in% valid.cbs, ][["DeduplicatedReads"]]))
+      stats.hto[["UMIs (Called)"]] <- round(sum(feature.dump.hto[feature.dump.hto[["CB"]] %in% valid.cbs, ][["DeduplicatedReads"]]))
+      stats.hto[["UMIs/Cell (Called)"]] <- round(median(feature.dump.hto[feature.dump.hto[["CB"]] %in% valid.cbs, ][["DeduplicatedReads"]]))
 
       # CALLED SINGLETS (INTER-HTO)
       meta.data <- read.csv(file.path(mat.stats.path, "seurat_unfiltered_metadata.csv"))
@@ -901,23 +909,23 @@ make_summary_table <- function() {
       stats.hto[["Cells (Doublet %)"]] <- paste(as.character(round(length(cells.doubl.inter) / length(valid.cbs) * 100, 1)), "%")
       stats.hto[["Cells (Singlet %)"]] <- paste(as.character(round(length(cells.singl.inter) / length(valid.cbs) * 100, 1)), "%")
 
-      stats.hto[["Reads - HTO (Negative %)"]] <- paste(as.character(round(sum(featDump.hto[featDump.hto[["CB"]] %in% cells.negat.inter, ][["MappedReads"]]) / stats.hto[["Reads (Called)"]] * 100, 1)), "%")
-      stats.hto[["Reads - HTO (Doublet %)"]] <- paste(as.character(round(sum(featDump.hto[featDump.hto[["CB"]] %in% cells.doubl.inter, ][["MappedReads"]]) / stats.hto[["Reads (Called)"]] * 100, 1)), "%")
-      stats.hto[["Reads - HTO (Singlet %)"]] <- paste(as.character(round(sum(featDump.hto[featDump.hto[["CB"]] %in% cells.singl.inter, ][["MappedReads"]]) / stats.hto[["Reads (Called)"]] * 100, 1)), "%")
+      stats.hto[["Reads - HTO (Negative %)"]] <- paste(as.character(round(sum(feature.dump.hto[feature.dump.hto[["CB"]] %in% cells.negat.inter, ][["MappedReads"]]) / stats.hto[["Reads (Called)"]] * 100, 1)), "%")
+      stats.hto[["Reads - HTO (Doublet %)"]] <- paste(as.character(round(sum(feature.dump.hto[feature.dump.hto[["CB"]] %in% cells.doubl.inter, ][["MappedReads"]]) / stats.hto[["Reads (Called)"]] * 100, 1)), "%")
+      stats.hto[["Reads - HTO (Singlet %)"]] <- paste(as.character(round(sum(feature.dump.hto[feature.dump.hto[["CB"]] %in% cells.singl.inter, ][["MappedReads"]]) / stats.hto[["Reads (Called)"]] * 100, 1)), "%")
 
-      stats.hto[["Reads - RNA (Negative %)"]] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[["CB"]] %in% cells.negat.inter, ][["MappedReads"]]) / stats.10x[["Reads (Called)"]] * 100, 1)), "%")
-      stats.hto[["Reads - RNA (Doublet %)"]] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[["CB"]] %in% cells.doubl.inter, ][["MappedReads"]]) / stats.10x[["Reads (Called)"]] * 100, 1)), "%")
-      stats.hto[["Reads - RNA (Singlet %)"]] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[["CB"]] %in% cells.singl.inter, ][["MappedReads"]]) / stats.10x[["Reads (Called)"]] * 100, 1)), "%")
+      stats.hto[["Reads - RNA (Negative %)"]] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[["CB"]] %in% cells.negat.inter, ][["MappedReads"]]) / q.10x.called.reads * 100, 1)), "%")
+      stats.hto[["Reads - RNA (Doublet %)"]] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[["CB"]] %in% cells.doubl.inter, ][["MappedReads"]]) / q.10x.called.reads * 100, 1)), "%")
+      stats.hto[["Reads - RNA (Singlet %)"]] <- paste(as.character(round(sum(feature.dump.10x[feature.dump.10x[["CB"]] %in% cells.singl.inter, ][["MappedReads"]]) / q.10x.called.reads * 100, 1)), "%")
 
-      stats.hto[["Cells (inter-HTO)"]] <- length(unique(featDump.hto[featDump.hto[["CB"]] %in% cells.singl.inter, ][["CB"]]))
+      stats.hto[["Cells (inter-HTO)"]] <- length(unique(feature.dump.hto[feature.dump.hto[["CB"]] %in% cells.singl.inter, ][["CB"]]))
       stats.hto[["Cells % Called (inter-HTO)"]] <- paste(as.character(round(stats.hto[["Cells (inter-HTO)"]] / stats.hto[["Cells (Called)"]] * 100, 1)), "%")
 
-      stats.hto[["Reads (inter-HTO)"]] <- sum(featDump.hto[featDump.hto[["CB"]] %in% cells.singl.inter, ][["MappedReads"]])
+      stats.hto[["Reads (inter-HTO)"]] <- sum(feature.dump.hto[feature.dump.hto[["CB"]] %in% cells.singl.inter, ][["MappedReads"]])
       stats.hto[["Reads % Called (inter-HTO)"]] <- paste(as.character(round(stats.hto[["Reads (inter-HTO)"]] / stats.hto[["Reads (Called)"]] * 100, 1)), "%")
-      stats.hto[["Reads/Cell (inter-HTO)"]] <- round(median(featDump.hto[featDump.hto[["CB"]] %in% cells.singl.inter, ][["MappedReads"]]))
+      stats.hto[["Reads/Cell (inter-HTO)"]] <- round(median(feature.dump.hto[feature.dump.hto[["CB"]] %in% cells.singl.inter, ][["MappedReads"]]))
 
-      stats.hto[["UMIs (inter-HTO)"]] <- round(sum(featDump.hto[featDump.hto[["CB"]] %in% cells.singl.inter, ][["DeduplicatedReads"]]))
-      stats.hto[["UMIs/Cell (inter-HTO)"]] <- round(median(featDump.hto[featDump.hto[["CB"]] %in% cells.singl.inter, ][["DeduplicatedReads"]]))
+      stats.hto[["UMIs (inter-HTO)"]] <- round(sum(feature.dump.hto[feature.dump.hto[["CB"]] %in% cells.singl.inter, ][["DeduplicatedReads"]]))
+      stats.hto[["UMIs/Cell (inter-HTO)"]] <- round(median(feature.dump.hto[feature.dump.hto[["CB"]] %in% cells.singl.inter, ][["DeduplicatedReads"]]))
 
       # Bind to collective df
       stat.tib.hto <- bind_rows(stat.tib.hto, stats.hto)

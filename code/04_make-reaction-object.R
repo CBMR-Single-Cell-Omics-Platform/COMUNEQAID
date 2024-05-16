@@ -79,7 +79,7 @@ foreach(
   q.protocol <- rnx.tib[["seq_type"]]
   q.cutoff <- rnx.tib[["cutoff"]]
   q.organism <- rnx.tib[["align"]]
-  q.hto.cutoff <- filter(as_tibble(snakemake@config[["reaction_sheet"]]), reaction_id == q.rnx)[["hto_cutoff"]][[1]]
+  q.hto.cutoff <- filter(as_tibble(snakemake@config[["sample2reaction"]]), reaction_id == q.rnx)[["hto_cutoff"]]
 
   # q.low <- filter(as_tibble(snakemake@config[["reaction_sheet"]]), reaction_id == q.rnx)[["quantile_low"]][[1]]
   # q.high <- filter(as_tibble(snakemake@config[["reaction_sheet"]]), reaction_id == q.rnx)[["quantile_high"]][[1]]
@@ -426,12 +426,12 @@ foreach(
       hto.data.long <- rename(hto.data.long, "CB" = "rn")
       hto.data.long[, sample_id := as.character(sample_id)]
 
-      if (is.null(cutoff)) {
+      if (is.null(q.hto.cutoff)) {
         hto_mcl.cutoff <- data.table::data.table(cut_off = future.apply::future_apply(tmp.data, 1, function(x) select_hash_cutoff_mcl(x, q_l = 1, q_h = 0.01), future.seed = T), hto_name = colnames(hto.data.wide)[-1], key = "hto_name")
       }
 
-      if (is.double(cutoff)) {
-        hto.cutoff.metadata <- data.frame("cut_off" = log10(q.hto.cutoff))
+      if (is.double(q.hto.cutoff)) {
+        hto.cutoff.metadata <- data.frame("cut_off" = q.hto.cutoff)
         hto_mcl.cutoff <- data.table::data.table(hto.cutoff.metadata, hto_name = colnames(hto.data.wide)[-1], key = "hto_name")
       }
 
